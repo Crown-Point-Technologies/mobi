@@ -4,7 +4,7 @@
   $Id:$
   $HeadURL:$
   %%
-  Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
   %%
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -42,6 +42,9 @@
                     </div>
                     <div *ngIf="!om.isAnnotation(os.listItem.selected)" class="row py-2">
                         <axiom-block class="col"></axiom-block>
+                    </div>
+                    <div class="row py-2">
+                        <app-property-chain-block class="col"></app-property-chain-block>
                     </div>
                 </div>
                 <div class="col-5 vertical-scroll characteristics-usages-wrapper h-100">

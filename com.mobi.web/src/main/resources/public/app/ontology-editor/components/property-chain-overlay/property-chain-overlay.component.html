@@ -1,0 +1,50 @@
+<!--
+  #%L
+  com.mobi.web
+  $Id:$
+  $HeadURL:$
+  %%
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+  %%
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  #L%
+  -->
+<h1 mat-dialog-title>Add Property</h1>
+<div mat-dialog-content>
+    <div class="input-container">
+    <mat-form-field class="w-100">
+    <mat-label>Property</mat-label>
+        <input type="text" matInput placeholder="Enter Property" [formControl]="propertyChain"/>
+    </mat-form-field>
+        <button mat-icon-button (click)="addPropertyInputField()">
+            <mat-icon>add</mat-icon>
+        </button>
+    </div>
+    <div *ngFor="let additionalInput of additionalInputs; let i = index">
+        <div class="input-container">
+        <mat-form-field class="w-100">
+            <mat-label>Property</mat-label>
+            <input type="text" matInput placeholder="Enter Property" [formControl]="additionalInput"/>
+        </mat-form-field>
+            <button mat-icon-button (click)="removePropertyInputField(i)">
+                <mat-icon>delete</mat-icon>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div mat-dialog-actions>
+    <button mat-raised-button [mat-dialog-close]="false">Cancel</button>
+    <button mat-raised-button color="primary" [disabled]="!isPropertyFormValid()" >Submit</button>
+</div>
