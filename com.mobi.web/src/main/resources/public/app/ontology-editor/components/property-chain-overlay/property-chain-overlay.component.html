@@ -20,31 +20,64 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #L%
   -->
-<h1 mat-dialog-title>Add Property</h1>
-<div mat-dialog-content>
+<h1 mat-dialog-title>{{data.editing ? 'Edit Property' : 'Add Property'}}</h1>
+<form mat-dialog-content [formGroup]="propertyForm" >
+    <div>
     <div class="input-container">
     <mat-form-field class="w-100">
     <mat-label>Property</mat-label>
-        <input type="text" matInput placeholder="Enter Property" [formControl]="propertyChain"/>
+        <input type="text" matInput placeholder="Enter Property"
+               formControlName="propertyChain" [matAutocomplete]="propertyChainAuto"/>
+        <mat-autocomplete #propertyChainAuto="matAutocomplete">
+                <mat-option *ngFor="let option of objectProperties" [value]="option" [title]="option">
+                    {{option}}
+                </mat-option>
+        </mat-autocomplete>
+
+
     </mat-form-field>
-        <button mat-icon-button (click)="addPropertyInputField()">
+        <button mat-icon-button *ngIf="!data.editing" (click)="addProperty()" >
             <mat-icon>add</mat-icon>
         </button>
     </div>
-    <div *ngFor="let additionalInput of additionalInputs; let i = index">
-        <div class="input-container">
-        <mat-form-field class="w-100">
+    <div class="input-container">
+        <mat-form-field class="w-90">
             <mat-label>Property</mat-label>
-            <input type="text" matInput placeholder="Enter Property" [formControl]="additionalInput"/>
+            <input type="text" matInput placeholder="Enter Property"
+                   formControlName="defaultProperty" [matAutocomplete]="defaultPropertyAuto"/>
+            <mat-autocomplete #defaultPropertyAuto="matAutocomplete">
+                <mat-option *ngFor="let option of objectProperties" [value]="option" [title]="option">
+                    {{option}}
+                </mat-option>
+            </mat-autocomplete>
         </mat-form-field>
-            <button mat-icon-button (click)="removePropertyInputField(i)">
+    </div>
+    <div formArrayName="additionalProperties">
+    <div *ngFor="let additionalProperty of propertyForm.get('additionalProperties')['controls'];
+        let i = index" formGroupName="{{i}}">
+        <div class="input-container">
+            <mat-form-field class="w-100">
+                <mat-label>Property</mat-label>
+                <input type="text" matInput placeholder="Enter Property"
+                       formControlName="nextProperty" [matAutocomplete]="nextPropertyAuto"/>
+                <mat-autocomplete #nextPropertyAuto="matAutocomplete">
+                    <mat-option *ngFor="let option of objectProperties" [value]="option"
+                                [title]="option">
+                        {{option}}
+                    </mat-option>
+                </mat-autocomplete>
+            </mat-form-field>
+            <button mat-icon-button (click)="removeProperty(i)">
                 <mat-icon>delete</mat-icon>
             </button>
         </div>
     </div>
+    </div>
+    </div>
+
+</form>
+<div mat-dialog-actions >
+    <button mat-raised-button [mat-dialog-close]="false">Cancel</button>
+    <button mat-raised-button color="primary" (click)="submit()" [disabled]="!isFormValid()" >Submit</button>
 </div>
 
-<div mat-dialog-actions>
-    <button mat-raised-button [mat-dialog-close]="false">Cancel</button>
-    <button mat-raised-button color="primary" [disabled]="!isPropertyFormValid()" >Submit</button>
-</div>

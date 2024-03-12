@@ -20,55 +20,174 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-import { Component, OnInit } from '@angular/core';
-import {UntypedFormControl} from "@angular/forms";
-import {Observable} from "rxjs";
-import {XSD} from "../../../prefixes";
+import {Component, Inject, Input, OnInit} from '@angular/core';
+import {FormArray, FormControl, FormGroup, UntypedFormBuilder, Validators} from "@angular/forms";
+import {OWL} from "../../../prefixes";
+import {MAT_DIALOG_DATA, MatDialogRef} from "@angular/material/dialog";
+import {PropertyOverlayDataOptions} from "../../../shared/models/propertyOverlayDataOptions.interface";
+import {OntologyStateService} from "../../../shared/services/ontologyState.service";
+import {ToastService} from "../../../shared/services/toast.service";
+import {JSONLDObject} from "../../../shared/models/JSONLDObject.interface";
+import {PropertyManagerService} from "../../../shared/services/propertyManager.service";
+import {filter} from "lodash";
+import {ManchesterConverterService} from "../../../shared/services/manchesterConverter.service";
 
-interface PropertyGroup {
-  namespace: string,
-  options: PropertyOption[]
-}
-interface PropertyOption {
-  /*property: {
-    iri: string,
-    valuesKey: string
-  }*/
-  property: string,
-  disabled: boolean,
-  name: string
-}
+
 @Component({
   selector: 'app-property-chain-overlay',
   templateUrl: './property-chain-overlay.component.html',
   styleUrls: ['./property-chain-overlay.component.scss']
 })
 export class PropertyChainOverlayComponent implements OnInit {
+  @Input()
+  propertyForm:FormGroup;
+  objectProperties:string[];
+  editData = {};
+  createPropertyObj = [];
+  propertyMap:Map<number, string[]> = new Map();
+  expression = '';
+  localNameMap = {};
+  oldData:string[];
 
-  propertyChains: string[] = [];
-  type = `${XSD}string`;
-  filteredPropertyChains: Observable<PropertyGroup[]>;
-  propertyChain = new UntypedFormControl('');
-  additionalInputs: UntypedFormControl[] = [];
-
-  constructor() { }
+  constructor(private fb:UntypedFormBuilder, private dialogRef: MatDialogRef<PropertyChainOverlayComponent>,
+              @Inject(MAT_DIALOG_DATA) public data: PropertyOverlayDataOptions, private os:OntologyStateService,
+              private toast:ToastService,private mc: ManchesterConverterService,private pm: PropertyManagerService) {
+    this.createForm();
+  }
 
   ngOnInit(): void {
+    this.getAllObjectProperties();
+    if(this.data.propertyChain && this.data.defaultProperty) {
+      this.propertyForm.controls.propertyChain.setValue(this.data.propertyChain);
+      this.propertyForm.controls.defaultProperty.setValue(this.data.defaultProperty);
+      const addProperties = this.propertyForm.get('additionalProperties') as FormArray;
+      this.data.additionalProperties.forEach((property) => {
+        addProperties.push(this.fb.group({
+          nextProperty: [property]
+        }));
+      });
+    }
+    this.oldData = [
+      this.propertyForm.controls.propertyChain.value,
+      this.propertyForm.controls.defaultProperty.value,
+      ...(this.propertyForm.controls.additionalProperties.value
+              .filter(item => item.nextProperty)
+              .map(item => item.nextProperty)
+      )
+    ]
+  }
+
+  createForm(){
+  this.propertyForm = new FormGroup({
+    propertyChain:new FormControl('',[Validators.required]),
+    defaultProperty:new FormControl('',[Validators.required]),
+    additionalProperties: new FormArray([
+    ])
+  });
+  }
+
+  addProperty(){
+    const control = <FormArray> this.propertyForm.controls['additionalProperties'];
+    control.push(
+        new FormGroup({
+          nextProperty:new FormControl('',[Validators.required])
+        })
+    )
 
   }
 
-  addPropertyInputField(){
-    const newInput = new UntypedFormControl('');
-    this.additionalInputs.push(newInput);
+  removeProperty(index:number){
+    const control = <FormArray>this.propertyForm.controls['additionalProperties'];
+    control.removeAt(index);
   }
 
-  removePropertyInputField(index:number){
-    this.additionalInputs.splice(index,1);
+  getAllObjectProperties(){
+    const objectPropertyList =
+        this.os.listItem.flatEverythingTree?.filter((obj:any)=>
+        Object.prototype.hasOwnProperty.call(obj, 'entityIRI'));
+    this.objectProperties = objectPropertyList.map((obj:any) => obj.entityInfo?.label);
   }
 
-  isPropertyFormValid():boolean {
-    const allPropertyInputs = [this.propertyChain, ...this.additionalInputs];
-    return allPropertyInputs.every(input=>input.valid);
+  isFormValid():boolean{
+    if (!this.propertyForm.valid) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+  submit(){
+    if(!this.data.editing){
+      this.addPropertyChain();
+    } else {
+      this.editPropertyChain();
+    }
+    this.createForm();
   }
 
+  addPropertyChain() {
+    const newData = {
+      propertyChain: this.propertyForm.controls.propertyChain.value,
+      defaultProperty:this.propertyForm.controls.defaultProperty.value,
+      additionalProperties: this.propertyForm.controls.additionalProperties.value.map(item => item.nextProperty)
+    }
+    const propertyChain = this.propertyForm.controls.propertyChain.value;
+    const defaultProperty = this.propertyForm.controls.defaultProperty.value;
+    const additionalProperties = this.propertyForm.controls.additionalProperties.value.map(item => item.nextProperty);
+    this.createPropertyObj = [...this.createPropertyObj, propertyChain,defaultProperty, ...additionalProperties];
+    const propertyName = 'PropertyChainAxiom';
+    const addedValues = filter(this.createPropertyObj, value => this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}#${value}`));
+    const valueObjs = addedValues.map(value => ({'@id': `${this.os.listItem.ontologyId}#${value}`}));
+
+    const json: JSONLDObject = {
+      '@id': this.os.listItem.selected['@id'],
+      [`${OWL}PropertyChainAxiom`]: [{'@list': valueObjs}]
+    };
+    this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, json);
+    this.os.saveCurrentChanges().subscribe();
+    this.dialogRef.close(newData);
+
+  }
+
+  editPropertyChain() {
+    if(this.data.additionalProperties && this.data.additionalProperties.length > 0)
+    {
+      this.editData = {
+        propertyChain: this.propertyForm.controls.propertyChain.value,
+        defaultProperty: this.propertyForm.controls.defaultProperty.value,
+        additionalProperties: this.propertyForm.controls.additionalProperties.value
+            .filter(item => item.nextProperty)
+            .map(item => item.nextProperty)
+      }
+    }
+    else{
+      this.editData = {
+        propertyChain: this.propertyForm.controls.propertyChain.value,
+        defaultProperty: this.propertyForm.controls.defaultProperty.value
+      }
+    }
+
+    const propertyChain = this.propertyForm.controls.propertyChain.value;
+    const defaultProperty = this.propertyForm.controls.defaultProperty.value;
+    const additionalProperties = this.propertyForm.controls.additionalProperties.value.map(item => item.nextProperty);
+    const addPropertyValue = [propertyChain, defaultProperty, ...additionalProperties];
+    const propertyName = 'PropertyChainAxiom';
+
+    const addedOldValues = filter(this.oldData,oldValue=>this.pm.addPropertyId(this.os.listItem.selected,propertyName,`${OWL}#${oldValue}`));
+    const addedValues = filter(addPropertyValue, value => this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}#${value}`));
+    if (addedValues.length) {
+      const oldValueObj = addedOldValues.map(oldValue=>({'@id':`${this.os.listItem.ontologyId}#${oldValue}`}));
+      const valueObjs = addedValues.map(value => ({'@id': `${this.os.listItem.ontologyId}#${value}`}));
+      this.os.addToDeletions(this.os.listItem.versionedRdfRecord.recordId, {
+        '@id': this.os.listItem.selected['@id'],
+        [`${OWL}PropertyChainAxiom`]: [{'@list': oldValueObj}]
+      });
+      this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, {
+        '@id': this.os.listItem.selected['@id'],
+        [`${OWL}PropertyChainAxiom`]: [{'@list': valueObjs}]
+      });
+      this.os.saveCurrentChanges().subscribe();
+      this.toast.createSuccessToast('Property Chain updated successfully');
+      this.dialogRef.close(this.editData);
+    }
+  }
 }

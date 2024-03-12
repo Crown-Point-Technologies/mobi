@@ -384,6 +384,20 @@ export class PropertyManagerService {
         }
         return true;
     }
+
+
+    addPropertyId(entity:JSONLDObject,prop:string,value:string) : boolean{
+        if(!prop){
+            return false;
+        }
+        const property = {'@id':value};
+        if(has(entity,prop)){
+            entity[prop] = [property]
+        } else {
+            entity[prop] = property;
+        }
+        return true;
+    }
     /**
      * Edits the value at the specified index of the specified property on the provided entity to the
      * provided value with a type and language if provided. Will not edit the property value if the new value

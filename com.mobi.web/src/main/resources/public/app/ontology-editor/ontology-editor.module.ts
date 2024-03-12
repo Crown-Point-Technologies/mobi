@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -109,6 +109,8 @@ import { MergeTabComponent } from './components/mergeTab/mergeTab.component';
 import { OntologyDownloadModalComponent } from './components/ontology-download-modal/ontology-download-modal.component';
 import { FindViewComponent } from './components/find-view/find-view.component';
 import { QueryViewComponent } from './components/query-view/query-view.component';
+import { PropertyChainBlockComponent } from './components/property-chain-block/property-chain-block.component';
+import { PropertyChainOverlayComponent } from './components/property-chain-overlay/property-chain-overlay.component';
 
 /**
  * @namespace ontology-editor
@@ -205,6 +207,8 @@ import { QueryViewComponent } from './components/query-view/query-view.component
         OntologyDownloadModalComponent,
         FindViewComponent,
         QueryViewComponent,
+        PropertyChainBlockComponent,
+        PropertyChainOverlayComponent,
     ]
 })
 export class OntologyEditorModule {}

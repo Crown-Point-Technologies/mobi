@@ -4,7 +4,7 @@
  *  $Id:$
  *  $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as published by
@@ -69,6 +69,11 @@ export class PropertiesTabComponent implements OnInit, OnDestroy {
         });
     }
     deleteProperty(): void {
+        let selectedProperty: string = this.os.listItem.selected["@id"];
+        selectedProperty = selectedProperty?.split("#")[1];
+        if(this.os.listItem.objectPropertyMap.has(selectedProperty)) {
+            this.os.listItem.objectPropertyMap.delete(selectedProperty);
+        }
         if (this.om.isObjectProperty(this.os.listItem.selected)) {
             this.os.deleteObjectProperty();
         } else if (this.om.isDataTypeProperty(this.os.listItem.selected)) {

@@ -62,6 +62,7 @@
     "gridjs": "^5.0.2",
     "gridjs-angular": "^1.2.0",
     "jquery": "^3.3.1",
+    "jsonld": "^8.3.2",
     "jszip": "^3.6.0",
     "lodash": "^4.17.21",
     "mat-markdown-editor": "git+https://github.com/khalil-savoy/mat-markdown-editor.git",
