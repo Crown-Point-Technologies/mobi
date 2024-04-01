@@ -21,7 +21,7 @@
  * #L%
  */
 import {Component, Inject, Input, OnInit} from '@angular/core';
-import {FormArray, FormControl, FormGroup, UntypedFormBuilder, Validators} from "@angular/forms";
+import {Form, FormArray, FormControl, FormGroup, UntypedFormBuilder, Validators} from "@angular/forms";
 import {OWL} from "../../../prefixes";
 import {MAT_DIALOG_DATA, MatDialogRef} from "@angular/material/dialog";
 import {PropertyOverlayDataOptions} from "../../../shared/models/propertyOverlayDataOptions.interface";
@@ -30,8 +30,7 @@ import {ToastService} from "../../../shared/services/toast.service";
 import {JSONLDObject} from "../../../shared/models/JSONLDObject.interface";
 import {PropertyManagerService} from "../../../shared/services/propertyManager.service";
 import {filter} from "lodash";
-import {ManchesterConverterService} from "../../../shared/services/manchesterConverter.service";
-
+import {getMatIconNoHttpProviderError} from "@angular/material/icon";
 
 @Component({
   selector: 'app-property-chain-overlay',
@@ -51,49 +50,39 @@ export class PropertyChainOverlayComponent implements OnInit {
 
   constructor(private fb:UntypedFormBuilder, private dialogRef: MatDialogRef<PropertyChainOverlayComponent>,
               @Inject(MAT_DIALOG_DATA) public data: PropertyOverlayDataOptions, private os:OntologyStateService,
-              private toast:ToastService,private mc: ManchesterConverterService,private pm: PropertyManagerService) {
+              private toast:ToastService,private pm: PropertyManagerService) {
     this.createForm();
   }
 
   ngOnInit(): void {
     this.getAllObjectProperties();
-    if(this.data.propertyChain && this.data.defaultProperty) {
-      this.propertyForm.controls.propertyChain.setValue(this.data.propertyChain);
-      this.propertyForm.controls.defaultProperty.setValue(this.data.defaultProperty);
+    if(this.data.additionalProperties) {
       const addProperties = this.propertyForm.get('additionalProperties') as FormArray;
+      addProperties.clear();
       this.data.additionalProperties.forEach((property) => {
-        addProperties.push(this.fb.group({
-          nextProperty: [property]
-        }));
+        addProperties.push(
+            new FormControl(property,[Validators.required])
+        );
       });
+
     }
-    this.oldData = [
-      this.propertyForm.controls.propertyChain.value,
-      this.propertyForm.controls.defaultProperty.value,
-      ...(this.propertyForm.controls.additionalProperties.value
-              .filter(item => item.nextProperty)
-              .map(item => item.nextProperty)
-      )
-    ]
-  }
+    this.oldData = this.propertyForm.controls.additionalProperties.value;
+  };
 
   createForm(){
   this.propertyForm = new FormGroup({
-    propertyChain:new FormControl('',[Validators.required]),
-    defaultProperty:new FormControl('',[Validators.required]),
     additionalProperties: new FormArray([
-    ])
+      new FormControl('',[Validators.required]),
+      new FormControl('',[Validators.required]),
+    ]),
   });
   }
 
   addProperty(){
-    const control = <FormArray> this.propertyForm.controls['additionalProperties'];
+    const control = this.propertyForm.get('additionalProperties') as FormArray;
     control.push(
-        new FormGroup({
-          nextProperty:new FormControl('',[Validators.required])
-        })
-    )
-
+        new FormControl('',[Validators.required])
+    );
   }
 
   removeProperty(index:number){
@@ -109,11 +98,8 @@ export class PropertyChainOverlayComponent implements OnInit {
   }
 
   isFormValid():boolean{
-    if (!this.propertyForm.valid) {
-      return false;
-    } else {
-      return true;
-    }
+    return (this.propertyForm.controls.additionalProperties.value.length >= 2
+        && this.propertyForm.valid);
   }
   submit(){
     if(!this.data.editing){
@@ -126,14 +112,10 @@ export class PropertyChainOverlayComponent implements OnInit {
 
   addPropertyChain() {
     const newData = {
-      propertyChain: this.propertyForm.controls.propertyChain.value,
-      defaultProperty:this.propertyForm.controls.defaultProperty.value,
-      additionalProperties: this.propertyForm.controls.additionalProperties.value.map(item => item.nextProperty)
+      additionalProperties: this.propertyForm.controls.additionalProperties.value,
     }
-    const propertyChain = this.propertyForm.controls.propertyChain.value;
-    const defaultProperty = this.propertyForm.controls.defaultProperty.value;
-    const additionalProperties = this.propertyForm.controls.additionalProperties.value.map(item => item.nextProperty);
-    this.createPropertyObj = [...this.createPropertyObj, propertyChain,defaultProperty, ...additionalProperties];
+    const additionalProperties = this.propertyForm.controls.additionalProperties.value;
+    this.createPropertyObj = additionalProperties;
     const propertyName = 'PropertyChainAxiom';
     const addedValues = filter(this.createPropertyObj, value => this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}#${value}`));
     const valueObjs = addedValues.map(value => ({'@id': `${this.os.listItem.ontologyId}#${value}`}));
@@ -145,35 +127,21 @@ export class PropertyChainOverlayComponent implements OnInit {
     this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, json);
     this.os.saveCurrentChanges().subscribe();
     this.dialogRef.close(newData);
-
   }
 
   editPropertyChain() {
     if(this.data.additionalProperties && this.data.additionalProperties.length > 0)
     {
       this.editData = {
-        propertyChain: this.propertyForm.controls.propertyChain.value,
-        defaultProperty: this.propertyForm.controls.defaultProperty.value,
         additionalProperties: this.propertyForm.controls.additionalProperties.value
-            .filter(item => item.nextProperty)
-            .map(item => item.nextProperty)
-      }
-    }
-    else{
-      this.editData = {
-        propertyChain: this.propertyForm.controls.propertyChain.value,
-        defaultProperty: this.propertyForm.controls.defaultProperty.value
       }
     }
 
-    const propertyChain = this.propertyForm.controls.propertyChain.value;
-    const defaultProperty = this.propertyForm.controls.defaultProperty.value;
-    const additionalProperties = this.propertyForm.controls.additionalProperties.value.map(item => item.nextProperty);
-    const addPropertyValue = [propertyChain, defaultProperty, ...additionalProperties];
+    const additionalProperties = this.propertyForm.controls.additionalProperties.value;
     const propertyName = 'PropertyChainAxiom';
 
     const addedOldValues = filter(this.oldData,oldValue=>this.pm.addPropertyId(this.os.listItem.selected,propertyName,`${OWL}#${oldValue}`));
-    const addedValues = filter(addPropertyValue, value => this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}#${value}`));
+    const addedValues = filter(additionalProperties, value => this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}#${value}`));
     if (addedValues.length) {
       const oldValueObj = addedOldValues.map(oldValue=>({'@id':`${this.os.listItem.ontologyId}#${oldValue}`}));
       const valueObjs = addedValues.map(value => ({'@id': `${this.os.listItem.ontologyId}#${value}`}));
@@ -190,4 +158,6 @@ export class PropertyChainOverlayComponent implements OnInit {
       this.dialogRef.close(this.editData);
     }
   }
+
+  protected readonly getMatIconNoHttpProviderError = getMatIconNoHttpProviderError;
 }

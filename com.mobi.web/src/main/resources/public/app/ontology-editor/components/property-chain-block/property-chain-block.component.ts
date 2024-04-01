@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-import { Component, Input, OnChanges } from "@angular/core";
+import {Component, Input, OnChanges} from "@angular/core";
 import { MatDialog } from "@angular/material/dialog";
 import { OntologyManagerService } from "../../../shared/services/ontologyManager.service";
 import { PropertyChainOverlayComponent } from "../property-chain-overlay/property-chain-overlay.component";
@@ -28,6 +28,7 @@ import { OntologyStateService } from "../../../shared/services/ontologyState.ser
 import { JSONLDObject } from "../../../shared/models/JSONLDObject.interface";
 import { ConfirmModalComponent } from "../../../shared/components/confirmModal/confirmModal.component";
 import * as jsonld from "jsonld";
+
 @Component({
   selector: "app-property-chain-block",
   templateUrl: "./property-chain-block.component.html",
@@ -40,9 +41,10 @@ export class PropertyChainBlockComponent implements OnChanges {
   additional: string[] = [];
 
   propMap: string[] = [];
-  formattedChain: string[] = [];
-  intializePropertyFormat: any[][] = [];
   hasParent: string;
+  oldHasPArent:string;
+  objectProp:string;
+  propertyChainMap = new Map<string,string[]>();
 
   constructor(
       private dialog: MatDialog,
@@ -51,11 +53,13 @@ export class PropertyChainBlockComponent implements OnChanges {
   ) { }
 
   async ngOnChanges(): Promise<any> {
-    let selectedProperty: string = this.os.listItem.selected["@id"];
-    this.hasParent = selectedProperty?.split("#")[1];
-
+    const selectedObjProp = this.os.listItem.selected["@id"];
+    this.objectProp = selectedObjProp.split("#")[1];
+    let selectedProperty: string = this.os.listItem.selected["http://purl.org/dc/terms/title"];
+    this.hasParent = selectedProperty?.[0]['@value'] ??  '';
     this.updatePropertiesFiltered();
   }
+
   async parseRdfData(data): Promise<any[]> {
     const formattedData = [];
     const expanded = await jsonld.expand(data);
@@ -102,25 +106,27 @@ export class PropertyChainBlockComponent implements OnChanges {
   }
   async updatePropertiesFiltered(): Promise<void> {
     const propertyChainData = this.os.listItem.selectedBlankNodes;
-
+    console.log("PropertyChainData",JSON.stringify(this.os.listItem.selectedBlankNodes));
     const formattedData = await this.parseRdfData(propertyChainData);
     const maxLength = this.getMaxLength(formattedData);
     const dataArrays = this.createArrays(maxLength);
     const propertyChainDataRes = this.processData(formattedData, dataArrays);
 
     if (propertyChainDataRes !== null) {
-      this.propMap = this.os.listItem.objectPropertyMap.get(this.hasParent);
+        this.propMap = this.os.listItem.objectPropertyMap.get(this.objectProp);
     }
   }
 
   formatAdditionalProperties(chains: string[]) {
     if (chains != null && chains.length > 0) {
-      let formatString = "x ";
+
+      let formatString = "x";
       chains.forEach(p=> {
-          formatString += `'${p}' o `
+          formatString += ` '${p}' &nbsp<span class="blue-o">o</span>&nbsp`
       });
-      formatString = formatString.substring(0, formatString.length - 3);
-      formatString += ` z => x '${this.hasParent}' z`;
+      formatString = formatString.substring(0, formatString.length - 34);
+      formatString += `z => x  '${this.hasParent}' z`;
+
       return formatString;
     }
     return null;
@@ -136,29 +142,22 @@ export class PropertyChainBlockComponent implements OnChanges {
         .afterClosed()
         .subscribe((result) => {
           if (result) {
-            this.additional = [];
-            this.propertyChain = result.propertyChain;
-            this.defaultProperty = result.defaultProperty;
-            this.additional.push(result.propertyChain);
-            this.additional.push(result.defaultProperty);
-            result.additionalProperties.forEach(property => {
-              this.additional.push(property);
-            });
             const data = this.formatAdditionalProperties(
-                this.additional
+                result.additionalProperties
             );
 
             if(data != null && data.length > 0) {
-              const d: string[] = this.os.listItem.objectPropertyMap.get(this.hasParent);
-              if(data != null && data.length > 0) {
-                if (d != null && d.length > 0) {
-                  this.os.listItem.objectPropertyMap.get(this.hasParent).push(data);
+              const objData:string[] = this.os.listItem.objectPropertyMap.get(this.objectProp);
+              if((data && data.length > 0)) {
+                if ((objData)) {
+                  this.os.listItem.objectPropertyMap.get(this.objectProp)?.push(data);
                 } else {
-                  this.os.listItem.objectPropertyMap.set(this.hasParent, [data]);
+                  this.os.listItem.objectPropertyMap.set(this.objectProp,[data]);
                 }
               }
             }
-            this.propMap = this.os.listItem.objectPropertyMap.get(this.hasParent);
+
+            this.propMap = this.os.listItem.objectPropertyMap.get(this.objectProp);
           }
         });
   }
@@ -173,39 +172,44 @@ export class PropertyChainBlockComponent implements OnChanges {
         .afterClosed()
         .subscribe((result) => {
           if (result) {
-            const objMap = this.os.listItem.objectPropertyMap.get(this.hasParent);
+            const objMap = this.os.listItem.objectPropertyMap.get(this.objectProp);
             objMap.splice(propIndex, 1);
-            this.os.listItem.objectPropertyMap.set(this.hasParent, objMap);
+            this.os.listItem.objectPropertyMap.set(this.objectProp, objMap);
+            // this.os.listItem.objectPropertyMap.set(this.objectProp,objMap);
             this.propMap = objMap;
           }
         });
   }
 
+  extractValues(inputString:string):string[]{
+    const regex = /'(.*?)'(?=.*z\s*=>)/g;
+    const extractValues:string[] = [];
+    let match;
+
+    while((match = regex.exec(inputString)) !== null){
+        extractValues.push(match[1]);
+    }
+    return extractValues;
+  }
+
   editClicked(index: number, property: string) {
     this.additional = [];
-    const prop = property.substring(2, property.indexOf(" z =>"));
-    let props = prop.split(" o ");
-    props = props.map(p=>p.replace("'","").replace("'",""));
+    const props = this.extractValues(property);
+    console.log("PROPS",props);
     this.dialog
         .open(PropertyChainOverlayComponent, {
           data: {
             editing: true,
-            propertyChain: props[0],
-            defaultProperty: props[1],
-            additionalProperties: props.length > 2 ? props.slice(2) : [],
+            additionalProperties: props,
           },
         })
         .afterClosed()
         .subscribe((result) => {
           if (result) {
-            this.additional.push(result.propertyChain);
-            this.additional.push(result.defaultProperty);
-            this.additional.push(result.additionalProperties);
-            const properties = this.os.listItem.objectPropertyMap.get(this.hasParent);
-            properties[index] = this.formatAdditionalProperties(this.additional);
-            this.os.listItem.objectPropertyMap.set(this.hasParent, properties);
+            const properties = this.os.listItem.objectPropertyMap.get(this.objectProp);
+            properties[index] = this.formatAdditionalProperties(result.additionalProperties);
+            this.os.listItem.objectPropertyMap.set(this.objectProp, properties);
           }
         });
   }
-
 }
