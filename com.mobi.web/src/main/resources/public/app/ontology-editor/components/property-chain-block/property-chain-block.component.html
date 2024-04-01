@@ -26,8 +26,10 @@
     </div>
 
         <ul *ngFor="let p of propMap; index as i;" class="property-values mt-3 d-flex">
-            <li class="prop-value-container d-flex flex-wrap p-1 ml-3 mt-1 col-10">{{p}}</li>
-            <div class="button-container col-3">
+            <li class="prop-value-container d-flex flex-wrap p-1 ml-3 mr-4 mt-1 col-10"
+            [innerHTML]="p">
+                </li>
+            <div class="button-container button-section col-2">
                 <button  mat-icon-button color="primary"
                          (click)="openRemoveOverlay(i, p)"
                          title="Delete"><mat-icon>delete</mat-icon></button>
@@ -37,3 +39,4 @@
             </div>
         </ul>
 </div>
+

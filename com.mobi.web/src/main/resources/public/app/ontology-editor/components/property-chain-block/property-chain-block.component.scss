@@ -64,4 +64,22 @@
   margin-right: 2px;
   margin-left: 2px;
 }
+.button-section {
+  display: contents;
+}
 
+button {
+  margin-left: 5px;
+  width: 20px;
+}
+
+.mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+}
+
+::ng-deep .blue-o{
+  color:#303f9f;
+  font-weight: bold;
+}

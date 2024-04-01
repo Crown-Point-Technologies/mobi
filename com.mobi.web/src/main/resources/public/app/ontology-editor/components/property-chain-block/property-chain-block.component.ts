@@ -27,7 +27,6 @@ import { PropertyChainOverlayComponent } from "../property-chain-overlay/propert
 import { OntologyStateService } from "../../../shared/services/ontologyState.service";
 import { JSONLDObject } from "../../../shared/models/JSONLDObject.interface";
 import { ConfirmModalComponent } from "../../../shared/components/confirmModal/confirmModal.component";
-import * as jsonld from "jsonld";
 
 @Component({
   selector: "app-property-chain-block",
@@ -36,13 +35,10 @@ import * as jsonld from "jsonld";
 })
 export class PropertyChainBlockComponent implements OnChanges {
   @Input() selected: JSONLDObject;
-  propertyChain: string;
-  defaultProperty: string;
   additional: string[] = [];
 
   propMap: string[] = [];
   hasParent: string;
-  oldHasPArent:string;
   objectProp:string;
   propertyChainMap = new Map<string,string[]>();
 
@@ -57,10 +53,27 @@ export class PropertyChainBlockComponent implements OnChanges {
     this.objectProp = selectedObjProp.split("#")[1];
     let selectedProperty: string = this.os.listItem.selected["http://purl.org/dc/terms/title"];
     this.hasParent = selectedProperty?.[0]['@value'] ??  '';
-    this.updatePropertiesFiltered();
+    this.updateProperties();
   }
 
-  async parseRdfData(data): Promise<any[]> {
+  updateProperties(){
+    if(this.os.listItem.objectPropertyMap.has(this.objectProp)) {
+      const properties = this.os.listItem.objectPropertyMap.get(this.objectProp);
+      this.os.listItem.objectPropertyMap.delete(this.objectProp);
+      let checkProp:string[][]=[];
+      properties.forEach(property => {
+        checkProp.push(this.extractValues(property));
+      });
+      const newProp:string[] = [];
+      checkProp.forEach(data =>{
+        newProp.push(this.formatAdditionalProperties(data));
+      });
+      this.os.listItem.objectPropertyMap.set(this.objectProp, newProp);
+      this.propMap = newProp;
+    }
+  }
+
+  /*async parseRdfData(data): Promise<any[]> {
     const formattedData = [];
     const expanded = await jsonld.expand(data);
     const flattened = await jsonld.flatten(expanded);
@@ -72,8 +85,8 @@ export class PropertyChainBlockComponent implements OnChanges {
       formattedData.push({ nodeId, firstElements, secondElements, nextNode });
     });
     return formattedData;
-  }
-  getMaxLength(data) {
+  }*/
+  /*getMaxLength(data) {
     let maxLength = 0;
     for (const item of data) {
       if (item.firstElements.length > maxLength) {
@@ -81,15 +94,15 @@ export class PropertyChainBlockComponent implements OnChanges {
       }
     }
     return maxLength;
-  }
-  createArrays(maxLength) {
+  }*/
+  /*createArrays(maxLength) {
     const result = [];
     for (let i = 0; i < maxLength; i++) {
       result.push([]);
     }
     return result;
-  }
-  processData(data, dataArrays) {
+  }*/
+  /*processData(data, dataArrays) {
     const propertyChainDatas = [];
     data.sort((a, b) => a.nodeId.localeCompare(b.nodeId));
     data.forEach((node): void => {
@@ -103,10 +116,9 @@ export class PropertyChainBlockComponent implements OnChanges {
       }
     });
     return dataArrays
-  }
-  async updatePropertiesFiltered(): Promise<void> {
+  }*/
+  /*async updatePropertiesFiltered(): Promise<void> {
     const propertyChainData = this.os.listItem.selectedBlankNodes;
-    console.log("PropertyChainData",JSON.stringify(this.os.listItem.selectedBlankNodes));
     const formattedData = await this.parseRdfData(propertyChainData);
     const maxLength = this.getMaxLength(formattedData);
     const dataArrays = this.createArrays(maxLength);
@@ -115,7 +127,7 @@ export class PropertyChainBlockComponent implements OnChanges {
     if (propertyChainDataRes !== null) {
         this.propMap = this.os.listItem.objectPropertyMap.get(this.objectProp);
     }
-  }
+  }*/
 
   formatAdditionalProperties(chains: string[]) {
     if (chains != null && chains.length > 0) {
@@ -149,7 +161,7 @@ export class PropertyChainBlockComponent implements OnChanges {
             if(data != null && data.length > 0) {
               const objData:string[] = this.os.listItem.objectPropertyMap.get(this.objectProp);
               if((data && data.length > 0)) {
-                if ((objData)) {
+                if (objData) {
                   this.os.listItem.objectPropertyMap.get(this.objectProp)?.push(data);
                 } else {
                   this.os.listItem.objectPropertyMap.set(this.objectProp,[data]);
@@ -175,7 +187,6 @@ export class PropertyChainBlockComponent implements OnChanges {
             const objMap = this.os.listItem.objectPropertyMap.get(this.objectProp);
             objMap.splice(propIndex, 1);
             this.os.listItem.objectPropertyMap.set(this.objectProp, objMap);
-            // this.os.listItem.objectPropertyMap.set(this.objectProp,objMap);
             this.propMap = objMap;
           }
         });
