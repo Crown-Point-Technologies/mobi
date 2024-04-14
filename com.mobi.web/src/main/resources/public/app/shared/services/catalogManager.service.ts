@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -1105,7 +1105,9 @@ export class CatalogManagerService {
      * @param {string} catalogId The id of the Catalog the Record should be part of
      * @returns {Observable} An Observable that resolves with the InProgessCommit or rejects with the HTTP response
      */
+    getData:any;
     getInProgressCommit(recordId: string, catalogId: string): Observable<Difference> {
+        this.getData = this.spinnerSrv.track(this.http.get<Difference>(`${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/in-progress-commit`));
         return this.spinnerSrv.track(this.http.get<Difference>(`${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/in-progress-commit`));
     }
 
@@ -1119,10 +1121,11 @@ export class CatalogManagerService {
      * @param {Difference} differenceObj An object representing a collection of added and deleted statements
      * @returns {Observable} An Observable that resolves if the update was successful or rejects with an error message
      */
-    updateInProgressCommit(recordId: string, catalogId: string, differenceObj: Difference): Observable<void> {
+    updateInProgressCommit(recordId: string, catalogId: string, differenceObj: Difference, isPreserve? :boolean): Observable<void> {
         const fd = new FormData();
         fd.append('additions', JSON.stringify(differenceObj.additions));
         fd.append('deletions', JSON.stringify(differenceObj.deletions));
+        fd.append('isPreserve',JSON.stringify(isPreserve));
         return this.spinnerSrv.track(this.http.put(`${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/in-progress-commit`, fd, {responseType: 'text'}))
             .pipe(catchError(handleError), map(() => {}));
     }

@@ -30,7 +30,7 @@ export interface PropertyOverlayDataOptions {
     index?: number;
     language?: string;
     isIRIProperty?: boolean;
-    propertyChain?:string;
-    defaultProperty?:string;
+    removeIndex?:number,
+    genId?:string,
     additionalProperties?:string[];
 }

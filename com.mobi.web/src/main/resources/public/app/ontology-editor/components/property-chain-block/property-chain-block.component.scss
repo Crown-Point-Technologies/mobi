@@ -64,12 +64,18 @@
   margin-right: 2px;
   margin-left: 2px;
 }
+
 .button-section {
   display: contents;
 }
+button.mat-icon-button {
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+}
 
 button {
-  margin-left: 5px;
+  margin-left: 1px;
   width: 20px;
 }
 

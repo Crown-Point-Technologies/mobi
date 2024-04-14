@@ -69,11 +69,6 @@ export class PropertiesTabComponent implements OnInit, OnDestroy {
         });
     }
     deleteProperty(): void {
-        let selectedProperty: string = this.os.listItem.selected["@id"];
-        selectedProperty = selectedProperty?.split("#")[1];
-        if(this.os.listItem.objectPropertyMap.has(selectedProperty)) {
-            this.os.listItem.objectPropertyMap.delete(selectedProperty);
-        }
         if (this.om.isObjectProperty(this.os.listItem.selected)) {
             this.os.deleteObjectProperty();
         } else if (this.om.isDataTypeProperty(this.os.listItem.selected)) {

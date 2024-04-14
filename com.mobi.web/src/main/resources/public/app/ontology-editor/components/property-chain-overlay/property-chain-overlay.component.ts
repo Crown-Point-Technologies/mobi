@@ -21,16 +21,15 @@
  * #L%
  */
 import {Component, Inject, Input, OnInit} from '@angular/core';
-import {Form, FormArray, FormControl, FormGroup, UntypedFormBuilder, Validators} from "@angular/forms";
-import {OWL} from "../../../prefixes";
-import {MAT_DIALOG_DATA, MatDialogRef} from "@angular/material/dialog";
-import {PropertyOverlayDataOptions} from "../../../shared/models/propertyOverlayDataOptions.interface";
-import {OntologyStateService} from "../../../shared/services/ontologyState.service";
-import {ToastService} from "../../../shared/services/toast.service";
-import {JSONLDObject} from "../../../shared/models/JSONLDObject.interface";
-import {PropertyManagerService} from "../../../shared/services/propertyManager.service";
-import {filter} from "lodash";
-import {getMatIconNoHttpProviderError} from "@angular/material/icon";
+import {FormArray, FormControl, FormGroup, Validators} from '@angular/forms';
+import {OWL} from '../../../prefixes';
+import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
+import {PropertyOverlayDataOptions} from '../../../shared/models/propertyOverlayDataOptions.interface';
+import {OntologyStateService} from '../../../shared/services/ontologyState.service';
+import {ToastService} from '../../../shared/services/toast.service';
+import {JSONLDObject} from '../../../shared/models/JSONLDObject.interface';
+import {PropertyManagerService} from '../../../shared/services/propertyManager.service';
+import {filter} from 'lodash';
 
 @Component({
   selector: 'app-property-chain-overlay',
@@ -48,7 +47,7 @@ export class PropertyChainOverlayComponent implements OnInit {
   localNameMap = {};
   oldData:string[];
 
-  constructor(private fb:UntypedFormBuilder, private dialogRef: MatDialogRef<PropertyChainOverlayComponent>,
+  constructor(private dialogRef: MatDialogRef<PropertyChainOverlayComponent>,
               @Inject(MAT_DIALOG_DATA) public data: PropertyOverlayDataOptions, private os:OntologyStateService,
               private toast:ToastService,private pm: PropertyManagerService) {
     this.createForm();
@@ -56,7 +55,7 @@ export class PropertyChainOverlayComponent implements OnInit {
 
   ngOnInit(): void {
     this.getAllObjectProperties();
-    if(this.data.additionalProperties) {
+    if (this.data.additionalProperties) {
       const addProperties = this.propertyForm.get('additionalProperties') as FormArray;
       addProperties.clear();
       this.data.additionalProperties.forEach((property) => {
@@ -67,7 +66,7 @@ export class PropertyChainOverlayComponent implements OnInit {
 
     }
     this.oldData = this.propertyForm.controls.additionalProperties.value;
-  };
+  }
 
   createForm(){
   this.propertyForm = new FormGroup({
@@ -86,15 +85,16 @@ export class PropertyChainOverlayComponent implements OnInit {
   }
 
   removeProperty(index:number){
-    const control = <FormArray>this.propertyForm.controls['additionalProperties'];
+    const control = <FormArray> this.propertyForm.controls['additionalProperties'];
     control.removeAt(index);
   }
 
   getAllObjectProperties(){
     const objectPropertyList =
-        this.os.listItem.flatEverythingTree?.filter((obj:any)=>
-        Object.prototype.hasOwnProperty.call(obj, 'entityIRI'));
+        this.os.listItem.objectProperties.flat?.filter((obj:any)=>
+            Object.prototype.hasOwnProperty.call(obj, 'entityIRI'));
     this.objectProperties = objectPropertyList.map((obj:any) => obj.entityInfo?.label);
+
   }
 
   isFormValid():boolean{
@@ -102,7 +102,7 @@ export class PropertyChainOverlayComponent implements OnInit {
         && this.propertyForm.valid);
   }
   submit(){
-    if(!this.data.editing){
+    if (!this.data.editing){
       this.addPropertyChain();
     } else {
       this.editPropertyChain();
@@ -113,12 +113,12 @@ export class PropertyChainOverlayComponent implements OnInit {
   addPropertyChain() {
     const newData = {
       additionalProperties: this.propertyForm.controls.additionalProperties.value,
-    }
+    };
     const additionalProperties = this.propertyForm.controls.additionalProperties.value;
     this.createPropertyObj = additionalProperties;
     const propertyName = 'PropertyChainAxiom';
     const addedValues = filter(this.createPropertyObj, value => this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}#${value}`));
-    const valueObjs = addedValues.map(value => ({'@id': `${this.os.listItem.ontologyId}#${value}`}));
+    const valueObjs = addedValues.map(value => ({'@id': `${this.os.listItem.ontologyId}/#${value}`}));
 
     const json: JSONLDObject = {
       '@id': this.os.listItem.selected['@id'],
@@ -129,12 +129,38 @@ export class PropertyChainOverlayComponent implements OnInit {
     this.dialogRef.close(newData);
   }
 
+  extractRemovePropertyChainValues(response, genId: string): JSONLDObject[] {
+    return response.filter(obj => obj['@id'].includes(genId));
+  }
+
   editPropertyChain() {
-    if(this.data.additionalProperties && this.data.additionalProperties.length > 0)
-    {
+    const response:JSONLDObject = this.os.listItem.selected;
+    const responseBlankNode = this.os.listItem.inProgressCommit.additions;
+    const deletionObj:any[] = [];
+    const removeGenId = this.data.genId;
+    const propIndex = this.data.removeIndex;
+    const deletedData :JSONLDObject[] = this.extractRemovePropertyChainValues(responseBlankNode,removeGenId);
+    deletionObj.push(deletedData);
+
+    if (response['http://www.w3.org/2002/07/owl#PropertyChainAxiom']) {
+      const propertyChainAxiom = response['http://www.w3.org/2002/07/owl#PropertyChainAxiom'];
+      if (propertyChainAxiom && Array.isArray(propertyChainAxiom)) {
+        propertyChainAxiom.forEach(item => {
+          const genid = item['@id'].split('/').pop().split('-')[1];
+          if (genid === removeGenId){
+            propertyChainAxiom.splice(propIndex,1);
+          }
+        });
+      }
+    }
+    this.os.addToDeletions(this.os.listItem.versionedRdfRecord.recordId, {
+      '@id': this.os.listItem.selected['@id'],'@type': ['http://www.w3.org/2002/07/owl#PropertyChainAxiom'],
+      [`${OWL}PropertyChainAxiom`]: deletionObj
+    });
+    if (this.data.additionalProperties && this.data.additionalProperties.length > 0) {
       this.editData = {
         additionalProperties: this.propertyForm.controls.additionalProperties.value
-      }
+      };
     }
 
     const additionalProperties = this.propertyForm.controls.additionalProperties.value;
@@ -143,12 +169,7 @@ export class PropertyChainOverlayComponent implements OnInit {
     const addedOldValues = filter(this.oldData,oldValue=>this.pm.addPropertyId(this.os.listItem.selected,propertyName,`${OWL}#${oldValue}`));
     const addedValues = filter(additionalProperties, value => this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}#${value}`));
     if (addedValues.length) {
-      const oldValueObj = addedOldValues.map(oldValue=>({'@id':`${this.os.listItem.ontologyId}#${oldValue}`}));
       const valueObjs = addedValues.map(value => ({'@id': `${this.os.listItem.ontologyId}#${value}`}));
-      this.os.addToDeletions(this.os.listItem.versionedRdfRecord.recordId, {
-        '@id': this.os.listItem.selected['@id'],
-        [`${OWL}PropertyChainAxiom`]: [{'@list': oldValueObj}]
-      });
       this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, {
         '@id': this.os.listItem.selected['@id'],
         [`${OWL}PropertyChainAxiom`]: [{'@list': valueObjs}]
@@ -159,5 +180,4 @@ export class PropertyChainOverlayComponent implements OnInit {
     }
   }
 
-  protected readonly getMatIconNoHttpProviderError = getMatIconNoHttpProviderError;
 }

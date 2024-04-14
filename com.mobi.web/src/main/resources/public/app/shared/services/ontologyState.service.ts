@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -386,7 +386,9 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
                     return this.updateOntology(recordId, branchId, commitId, listItem.upToDate, commit);
                 })
             );
+
     }
+
     /**
      * Used to update an ontology that is already open within the Ontology Editor. It will replace the existing
      * listItem with a new listItem consisting of the data associated with the record ID, branch ID, and commit
@@ -895,7 +897,7 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
      * @returns {Observable<null>} An Observable with the ontology ID.
      */
     saveChanges(recordId: string, differenceObj: Difference): Observable<void> {
-        return this.cm.updateInProgressCommit(recordId, this.catalogId, differenceObj);
+        return this.cm.updateInProgressCommit(recordId, this.catalogId, differenceObj,false);
     }
     /**
      * 
@@ -2240,7 +2242,6 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
         difference.deletions = listItem.deletions;
         return this.saveChanges(listItem.versionedRdfRecord.recordId, difference).pipe(
             switchMap(() => this.afterSave(listItem, cloneListItem)),
-            // catchError(error => of(error)),
             tap(() => {
                 const entityIRI = this.getActiveEntityIRI(listItem);
                 const activeKey = this.getActiveKey(listItem);
@@ -2248,12 +2249,11 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
                     this.setEntityUsages(entityIRI, listItem);
                 }
                 this.updateIsSaved(listItem);
-                // this.listItem.isSaved = this.isCommittable(this.listItem);
             }, errorMessage => {
                 this.toast.createErrorToast(errorMessage);
                 this.listItem.isSaved = false;
             }));
-            
+
     }
     /**
      * Calculates the new label for the current selected entity in the current `listItem` and updates all references to
