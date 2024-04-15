@@ -1108,7 +1108,7 @@ export class CatalogManagerService {
     getData:any;
     getInProgressCommit(recordId: string, catalogId: string): Observable<Difference> {
         this.getData = this.spinnerSrv.track(this.http.get<Difference>(`${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/in-progress-commit`));
-        return this.spinnerSrv.track(this.http.get<Difference>(`${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/in-progress-commit`));
+        return this.getData;
     }
 
     /**

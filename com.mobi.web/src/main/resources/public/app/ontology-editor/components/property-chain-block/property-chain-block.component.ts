@@ -67,13 +67,20 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
 
     async ngOnChanges() {
       const selectedObjProp = this.os.listItem.selected['@id'];
-      this.objectProp = selectedObjProp.split('#')[1];
-      const selectedProperty: string = this.os.listItem.selected['http://purl.org/dc/terms/title'];
-        this.hasParent = selectedProperty?.[0]['@value'] ?? '';
+          this.objectProp = selectedObjProp.split('#')[1];
 
-       if(this.oldHP && this.oldHP !== this.hasParent){
+      const selectedLabel = this.os.listItem.selected['http://www.w3.org/2000/01/rdf-schema#label'];
+      const selectedAnnotationsLabel = selectedLabel?.[0]['@value'];
+      const selectedProperty: string = this.os.listItem.selected['http://purl.org/dc/terms/title'];
+      const selectedTitle = selectedProperty?.[0]['@value'];
+      if(selectedTitle){
+        this.hasParent = selectedTitle;
+      } else if(selectedAnnotationsLabel){
+        this.hasParent = selectedAnnotationsLabel;
+      } else {
+        this.hasParent = this.objectProp;
+      }
         this.updateProperties();
-       }
   }
 
   updatePropertyChainData() {
@@ -128,7 +135,6 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
   }
 
   updateProperties(){
-    if (this.objectPropertyMap.has(this.objectProp)) {
 
       if(this.propertyChainDatas.length >0){
         this.propertyChainDatas.forEach(p=>{
@@ -137,7 +143,6 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
           }
         });
       }
-    }
   }
 
   formatAdditionalProperties(chains: string[]) {
@@ -201,7 +206,7 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
         });
   }
 
-  extractRemovePropertyChainValues(response: JSONLDObject[], genId: string): JSONLDObject[] {
+  extractRemovePropertyChainValues(response, genId: string): JSONLDObject[] {
     return response.filter(obj => obj['@id'].includes(genId));
   }
   openRemoveOverlay(propIndex: number, propValue: string,removeGenId:string) {
@@ -214,8 +219,8 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
         .afterClosed()
         .subscribe((result) => {
           if (result) {
-            const response:JSONLDObject = this.os.listItem.selected;
-            const responseBlankNode:JSONLDObject[] = this.os.listItem.selectedBlankNodes;
+            const response = this.os.listItem.inProgressCommit.additions;
+            const responseBlankNode= this.os.listItem.inProgressCommit.additions;
             const deletionObj:any[] = [];
             const deletedData :JSONLDObject[] = this.extractRemovePropertyChainValues(responseBlankNode,removeGenId);
             deletionObj.push(deletedData);
