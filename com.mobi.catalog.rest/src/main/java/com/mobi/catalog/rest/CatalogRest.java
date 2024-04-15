@@ -6,7 +6,7 @@ package com.mobi.catalog.rest;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -26,18 +26,7 @@ package com.mobi.catalog.rest;
 import static com.mobi.catalog.rest.utils.CatalogRestUtils.createCommitJson;
 import static com.mobi.catalog.rest.utils.CatalogRestUtils.createCommitResponse;
 import static com.mobi.catalog.rest.utils.CatalogRestUtils.getDifferenceJsonString;
-import static com.mobi.rest.util.RestUtils.checkStringParam;
-import static com.mobi.rest.util.RestUtils.createPaginatedResponseJackson;
-import static com.mobi.rest.util.RestUtils.createPaginatedResponseWithJsonNode;
-import static com.mobi.rest.util.RestUtils.createPaginatedThingResponseJackson;
-import static com.mobi.rest.util.RestUtils.getActiveUser;
-import static com.mobi.rest.util.RestUtils.getRDFFormatFileExtension;
-import static com.mobi.rest.util.RestUtils.getRDFFormatMimeType;
-import static com.mobi.rest.util.RestUtils.jsonldToDeskolemizedModel;
-import static com.mobi.rest.util.RestUtils.modelToSkolemizedJsonld;
-import static com.mobi.rest.util.RestUtils.modelToSkolemizedString;
-import static com.mobi.rest.util.RestUtils.thingToSkolemizedObjectNode;
-import static com.mobi.rest.util.RestUtils.validatePaginationParams;
+import static com.mobi.rest.util.RestUtils.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -93,6 +82,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Model;
@@ -105,6 +95,10 @@ import org.eclipse.rdf4j.model.impl.ValidatingValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.DCTERMS;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
+import org.eclipse.rdf4j.rio.RDFFormat;
+import org.eclipse.rdf4j.rio.RDFParser;
+import org.eclipse.rdf4j.rio.Rio;
+import org.eclipse.rdf4j.rio.helpers.BasicParserSettings;
 import org.eclipse.rdf4j.sail.SailException;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -116,14 +110,9 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -2439,8 +2428,8 @@ public class CatalogRest {
             @FormParam("deletions") String deletionsJson) {
         try {
             User activeUser = getActiveUser(servletRequest, engineManager);
-            Model additions = StringUtils.isEmpty(additionsJson) ? null : convertJsonld(additionsJson);
-            Model deletions = StringUtils.isEmpty(deletionsJson) ? null : convertJsonld(deletionsJson);
+            Model additions = StringUtils.isEmpty(additionsJson) ? null : convertJsonld(additionsJson, true);
+            Model deletions = StringUtils.isEmpty(deletionsJson) ? null : convertJsonld(deletionsJson, true);
             Resource newCommitId = versioningManager.merge(vf.createIRI(catalogId), vf.createIRI(recordId),
                     vf.createIRI(sourceBranchId), vf.createIRI(targetBranchId), activeUser, additions, deletions);
             return Response.ok(newCommitId.stringValue()).build();
@@ -2800,13 +2789,106 @@ public class CatalogRest {
             @Parameter(schema = @Schema(type = "string",
                     description = "String of JSON-LD that corresponds to the statements that"
                     + " were deleted in the entity", required = true))
-            @FormParam("deletions") String deletionsJson) {
+            @FormParam("deletions") String deletionsJson,
+            @DefaultValue("true") @FormParam("isPreserve") boolean isPreserve) {
         try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
             User activeUser = getActiveUser(servletRequest, engineManager);
-            Model additions = StringUtils.isEmpty(additionsJson) ? null : convertJsonld(additionsJson);
-            Model deletions = StringUtils.isEmpty(deletionsJson) ? null : convertJsonld(deletionsJson);
+            Model additions = StringUtils.isEmpty(additionsJson) ? null : convertJsonld(additionsJson, isPreserve);
+            Model deletions = StringUtils.isEmpty(deletionsJson) ? null : convertJsonld(deletionsJson, isPreserve);
             commitManager.updateInProgressCommit(vf.createIRI(catalogId), vf.createIRI(recordId), activeUser,
                     additions, deletions, conn);
+            if(!isPreserve){
+                preserveJsonld(additionsJson);
+                preserveJsonld(deletionsJson);
+            }
+            return Response.ok().build();
+        } catch (IllegalArgumentException ex) {
+            throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.BAD_REQUEST);
+        } catch (IllegalStateException | MobiException | IOException ex) {
+            throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    void preserveJsonld(String jsonld) throws IOException {
+        RDFParser rdfParser = Rio.createParser(RDFFormat.JSONLD);
+        rdfParser.getParserConfig().set(BasicParserSettings.PRESERVE_BNODE_IDS, true);
+        rdfParser.parse(IOUtils.toInputStream(jsonld, StandardCharsets.UTF_8));
+    }
+
+    @DELETE
+    @Path("{catalogId}/records/{recordId}/in-progress-commit2")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @RolesAllowed("user")
+    @Operation(
+            tags = "catalogs",
+            summary = "Updates the InProgressCommit for a user identified by the provided IDs using the statements "
+                    + "found in the provided form data. If the user does not have an InProgressCommit, one will be"
+                    + " created with the provided data.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "InProgressCommit was updated"),
+                    @ApiResponse(responseCode = "400", description = "BAD REQUEST. The requested catalogId or recordId"
+                            + " could not be found"),
+                    @ApiResponse(responseCode = "403", description = "Permission Denied"),
+                    @ApiResponse(responseCode = "500", description = "INTERNAL SERVER ERROR"),
+            }
+    )
+    @ActionId(value = Modify.TYPE)
+    @ResourceId(type = ValueType.PATH, value = "recordId")
+    public Response updateInProgressCommit2(
+            @Context HttpServletRequest servletRequest,
+            @Parameter(description = "String representing the Catalog ID", required = true)
+            @PathParam("catalogId") String catalogId,
+            @Parameter(description = "String representing the VersionedRecord ID", required = true)
+            @PathParam("recordId") String recordId,
+            @Parameter(schema = @Schema(type = "string",
+                    description = "String of JSON-LD that corresponds to the statements that"
+                            + " were added to the entity", required = true))
+            @FormParam("additions") String additionsJson,
+            @Parameter(schema = @Schema(type = "string",
+                    description = "String of JSON-LD that corresponds to the statements that"
+                            + " were deleted in the entity", required = true))
+            @FormParam("deletions") String deletionsJson,
+            @DefaultValue("true") @FormParam("isPreserve") boolean isPreserve) {
+        try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
+            try {
+///                IRI propertyChainAxiom = vf.createIRI("http://www.w3.org/2002/07/owl#PropertyChainAxiom");
+//                List<List<String>> dataList = new ArrayList<>();
+                List<String> datas = new ArrayList<>();
+                String id="";
+                String url = "http://mobi.com/.well-known/genid/genid"+id+"-b0";
+
+                datas.add("https://mobi.com/ontologies/Aa#11");
+                datas.add("http://www.w3.org/2002/07/owl#PropertyChainAxiom");
+                datas.add("http://mobi.com/.well-known/genid/genid"+id+"-b0");
+
+                datas.add("http://mobi.com/.well-known/genid/genid"+id+"-b0");
+                datas.add("http://www.w3.org/1999/02/22-rdf-syntax-ns#first");
+                datas.add("https://mobi.com/ontologies/Aa/#22");
+
+                datas.add("http://mobi.com/.well-known/genid/genid"+id+"-b0");
+                datas.add("http://www.w3.org/1999/02/22-rdf-syntax-ns#rest");
+                datas.add("http://mobi.com/.well-known/genid/genid"+id+"-b1");
+
+                datas.add("http://mobi.com/.well-known/genid/genid"+id+"-b1");
+                datas.add("http://www.w3.org/1999/02/22-rdf-syntax-ns#first");
+                datas.add("https://mobi.com/ontologies/Aa/#33");
+
+                datas.add("http://mobi.com/.well-known/genid/genid"+id+"-b1");
+                datas.add("http://www.w3.org/1999/02/22-rdf-syntax-ns#rest");
+                datas.add("http://www.w3.org/1999/02/22-rdf-syntax-ns#nil");
+                for(int i=0;i<=14;i+=3) {
+                    if(datas.size() >= i+2) {
+                        conn.remove((IRI) null, vf.createIRI(datas.get(i)), vf.createIRI(datas.get(i + 1)), vf.createIRI(datas.get(i + 2)));
+                    } else {
+                        System.out.println("out of bound");
+                    }
+                }
+                conn.commit();
+               // conn.prepareUpdate("DELETE ?s ?p ?o WHERE { ?s ?p ?o . FILTER(contains( str(?s), '"+url+"')) }");
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
             return Response.ok().build();
         } catch (IllegalArgumentException ex) {
             throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.BAD_REQUEST);
@@ -2970,7 +3052,7 @@ public class CatalogRest {
      * @return The new Thing if the JSON-LD contains the correct ID Resource; throws a 400 otherwise.
      */
     private <T extends Thing> T getNewThing(String newThingJson, Resource thingId, OrmFactory<T> factory) {
-        Model newThingModel = convertJsonld(newThingJson);
+        Model newThingModel = convertJsonld(newThingJson, true);
         return factory.getExisting(thingId, newThingModel).orElseThrow(() ->
                 ErrorUtils.sendError(factory.getTypeIRI().getLocalName() + " IDs must match",
                         Response.Status.BAD_REQUEST));
@@ -3001,8 +3083,8 @@ public class CatalogRest {
      *
      * @return A Model containing the statements from the JSON-LD string.
      */
-    private Model convertJsonld(String jsonld) {
-        return jsonldToDeskolemizedModel(jsonld, bNodeService);
+    private Model convertJsonld(String jsonld, boolean isPreserved) {
+        return jsonldToDeskolemizedModel(jsonld, bNodeService, isPreserved);
     }
 
     private Map<String, OrmFactory<? extends Record>> getRecordFactories() {

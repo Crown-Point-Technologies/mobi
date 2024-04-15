@@ -6,7 +6,7 @@ package com.mobi.rest.util;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -294,7 +294,7 @@ public class RestUtilsTest {
                 vf.createIRI("http://www.w3.org/2002/07/owl#someValuesFrom"),
                 vf.createIRI("https://mobi.com/ontologies/BlankNodeRestrictionUpdate#RestrictionClassUpdatedIRI"));
 
-        Model result = RestUtils.jsonldToModel(bNodeJsonld);
+        Model result = RestUtils.jsonldToModel(bNodeJsonld, true);
         result.forEach(statement -> {
             assertTrue(expectedModel.contains(statement.getSubject(), statement.getPredicate(), statement.getObject(), statement.getContext()));
         });
@@ -302,13 +302,13 @@ public class RestUtilsTest {
 
     @Test
     public void jsonldToModelTest() throws Exception {
-        Model result = RestUtils.jsonldToModel(expectedJsonld);
+        Model result = RestUtils.jsonldToModel(expectedJsonld, true);
         assertEquals(model, result);
     }
 
     @Test
     public void jsonldToDeskolemizedModelTest() throws Exception {
-        Model result = RestUtils.jsonldToDeskolemizedModel(expectedJsonld, service);
+        Model result = RestUtils.jsonldToDeskolemizedModel(expectedJsonld, service, true);
         assertEquals(model, result);
         verify(service).deskolemize(model);
     }

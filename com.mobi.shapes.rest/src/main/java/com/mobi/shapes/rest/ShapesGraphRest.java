@@ -6,7 +6,7 @@ package com.mobi.shapes.rest;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -238,7 +238,7 @@ public class ShapesGraphRest {
         } else {
             checkStringParam(json, "The json is missing.");
             RecordOperationConfig config = new OperationConfig();
-            Model jsonModel = RestUtils.jsonldToModel(json);
+            Model jsonModel = RestUtils.jsonldToModel(json, true);
             config.set(VersionedRDFRecordCreateSettings.INITIAL_COMMIT_DATA, jsonModel);
             return createShapesGraphRecord(servletRequest, title, description, markdown, keywords, config);
         }

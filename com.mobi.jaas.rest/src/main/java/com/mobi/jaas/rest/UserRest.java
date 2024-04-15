@@ -6,7 +6,7 @@ package com.mobi.jaas.rest;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -299,7 +299,7 @@ public class UserRest {
         isAuthorizedUser(servletRequest, username);
 
         try {
-            Model userModel = jsonldToModel(newUserStr);
+            Model userModel = jsonldToModel(newUserStr, true);
             Set<Resource> subjects = userModel.filter(null, vf.createIRI(RDF.TYPE.stringValue()),
                     vf.createIRI(User.TYPE)).subjects();
             if (subjects.size() < 1) {

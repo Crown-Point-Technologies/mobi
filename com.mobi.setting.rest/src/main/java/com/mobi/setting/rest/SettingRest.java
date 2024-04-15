@@ -6,7 +6,7 @@ package com.mobi.setting.rest;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -195,7 +195,7 @@ public class SettingRest {
         checkAdmin(type, user);
         try {
             SettingService<? extends Setting> service = getSettingService(type);
-            Model model = jsonldToModel(jsonld);
+            Model model = jsonldToModel(jsonld, true);
             Resource resourceId = service.createSetting(model, vf.createIRI(subType), user);
             return Response.status(201).entity(resourceId.stringValue()).build();
         } catch (IllegalArgumentException ex) {
@@ -237,7 +237,7 @@ public class SettingRest {
         checkAdmin(type, user);
         try {
             SettingService<? extends Setting> service = getSettingService(type);
-            Model model = jsonldToModel(jsonld);
+            Model model = jsonldToModel(jsonld, true);
             service.updateSetting(vf.createIRI(settingId), model, vf.createIRI(subType), user);
             return Response.ok().build();
         } catch (IllegalArgumentException ex) {

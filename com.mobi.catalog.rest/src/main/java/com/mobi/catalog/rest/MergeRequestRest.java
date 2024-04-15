@@ -6,7 +6,7 @@ package com.mobi.catalog.rest;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -930,7 +930,7 @@ public class MergeRequestRest {
     }
 
     private MergeRequest jsonToMergeRequest(Resource requestId, String jsonMergeRequest) {
-        Model mergeReqModel = jsonldToModel(jsonMergeRequest);
+        Model mergeReqModel = jsonldToModel(jsonMergeRequest, true);
         MergeRequest mergeRequest = mergeRequestFactory.getExisting(requestId, mergeReqModel).orElseThrow(() ->
                 ErrorUtils.sendError("MergeRequest IDs must match", Response.Status.BAD_REQUEST));
 
@@ -945,7 +945,7 @@ public class MergeRequestRest {
     }
 
     private Comment jsonToComment(Resource commentId, String jsonComment) {
-        Model commentModel = jsonldToModel(jsonComment);
+        Model commentModel = jsonldToModel(jsonComment, true);
         return commentFactory.getExisting(commentId, commentModel).orElseThrow(() ->
                 ErrorUtils.sendError("Comment IDs must match", Response.Status.BAD_REQUEST));
     }

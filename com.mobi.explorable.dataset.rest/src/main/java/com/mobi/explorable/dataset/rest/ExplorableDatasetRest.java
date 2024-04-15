@@ -6,7 +6,7 @@ package com.mobi.explorable.dataset.rest;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -377,7 +377,7 @@ public class ExplorableDatasetRest {
         checkStringParam(recordIRI, "The Dataset Record IRI is required.");
         checkStringParam(newInstanceJson, "The Instance's JSON-LD is required.");
         try (DatasetConnection conn = datasetManager.getConnection(factory.createIRI(recordIRI))) {
-            Model instanceModel = jsonldToModel(newInstanceJson);
+            Model instanceModel = jsonldToModel(newInstanceJson, true);
             Resource instanceId = instanceModel.stream()
                     .filter(statement -> !(statement.getSubject() instanceof BNode))
                     .findAny().orElseThrow(() ->
@@ -490,7 +490,7 @@ public class ExplorableDatasetRest {
                 conn.remove(reification);
                 reification.close();
             });
-            conn.add(jsonldToDeskolemizedModel(json, bNodeService));
+            conn.add(jsonldToDeskolemizedModel(json, bNodeService, true));
             conn.commit();
             return Response.ok().build();
         } catch (IllegalArgumentException e) {
