@@ -27,16 +27,16 @@ import { PropertyChainOverlayComponent } from '../property-chain-overlay/propert
 import { OntologyStateService } from '../../../shared/services/ontologyState.service';
 import { JSONLDObject } from '../../../shared/models/JSONLDObject.interface';
 import { ConfirmModalComponent } from '../../../shared/components/confirmModal/confirmModal.component';
-import {OWL} from '../../../prefixes';
-import {CatalogManagerService} from "../../../shared/services/catalogManager.service";
+import {DCTERMS, OWL, RDF, RDFS} from '../../../prefixes';
+import {CatalogManagerService} from '../../../shared/services/catalogManager.service';
 
 interface PropertyChainModel {
-  genId?:string,
-  values?:string[],
+  genId:string,
+  values:string[],
   formattedValuesStr:string
 }
 @Component({
-  selector: 'app-property-chain-block',
+  selector: 'property-chain-block',
   templateUrl: './property-chain-block.component.html',
   styleUrls: ['./property-chain-block.component.scss'],
 })
@@ -46,7 +46,7 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
   additional: string[] = [];
 
   hasParent: string;
-  objectProp:string;
+  objectProp:string | undefined;
   objectPropertyMap:Map<string, string[]> = new Map();
   objectMap:Map<string,string>=new Map();
   genidMap = new Map<string,string[]>();
@@ -60,25 +60,22 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
   ) { }
 
   async ngOnInit(): Promise<any> {
-    this.oldHP = this.hasParent;
-    this.os.saveCurrentChanges().subscribe();
     this.updatePropertyChainData();
   }
 
     async ngOnChanges() {
-      const selectedObjProp = this.os.listItem.selected['@id'];
-          this.objectProp = selectedObjProp.split('#')[1];
-
-      const selectedLabel = this.os.listItem.selected['http://www.w3.org/2000/01/rdf-schema#label'];
+      this.oldHP = this.hasParent;
+      this.objectProp  = this.om.getEntityName(this.os.listItem.selected);
+      const selectedLabel = this.os.listItem.selected[`${RDFS}label`];
       const selectedAnnotationsLabel = selectedLabel?.[0]['@value'];
-      const selectedProperty: string = this.os.listItem.selected['http://purl.org/dc/terms/title'];
+      const selectedProperty: string = this.os.listItem.selected[`${DCTERMS}title`];
       const selectedTitle = selectedProperty?.[0]['@value'];
       if(selectedTitle){
         this.hasParent = selectedTitle;
       } else if(selectedAnnotationsLabel){
         this.hasParent = selectedAnnotationsLabel;
       } else {
-        this.hasParent = this.objectProp;
+        this.hasParent = this.om.getEntityName(this.os.listItem.selected);
       }
         this.updateProperties();
   }
@@ -87,8 +84,7 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
     const selectedResponse:any = this.os.listItem.selected;
     const genids = this.extractGenids(selectedResponse);
     const response = this.os.listItem.selectedBlankNodes;
-    const properties = this.extractPropertyChainValues(response,genids);
-    const newProperties:string[] = [];
+    const properties = (response && genids) ? this.extractRDFValues(response, genids) : [];
 
     for (const [key,value] of this.genidMap.entries()){
       const chainItem : PropertyChainModel= {
@@ -98,6 +94,8 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
       };
       this.propertyChainDatas.push(chainItem);
     }
+
+    const newProperties:string[] = [];
     properties.forEach(data =>{
       newProperties.push(this.formatAdditionalProperties(data));
     });
@@ -107,11 +105,11 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
   extractGenids(response: any[]): string[] {
     const genids = [];
 
-    if (this.objectProp && response['http://www.w3.org/2002/07/owl#PropertyChainAxiom']) {
-        const propertyChainAxiom = response['http://www.w3.org/2002/07/owl#PropertyChainAxiom'];
+    if (this.objectProp && response[`${OWL}propertyChainAxiom`]) {
+        const propertyChainAxiom = response[`${OWL}propertyChainAxiom`];
         if (propertyChainAxiom && Array.isArray(propertyChainAxiom)) {
           propertyChainAxiom.forEach(item => {
-            const genid = item['@id']?.split('/').pop().split('-')[1];
+            const genid = item['@id'];
             genids.push(genid);
           });
         }
@@ -119,27 +117,57 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
     }
   }
 
-  extractPropertyChainValues(response: any[], genids: string[]): string[][] {
-    response.forEach(obj => {
-      const id= obj['@id']?.split('/').pop().split('-')[1];
-      if (genids?.includes(id)) {
-        const value = obj['http://www.w3.org/1999/02/22-rdf-syntax-ns#first'][0]['@id'].split('#').pop();
-        if (!this.genidMap.has(id)) {
-          this.genidMap.set(id, []);
+  getLabelFromEntityIRI(entityIRI:string):string {
+    const entry = this.os.listItem.objectProperties.flat.
+    find(entry => entry.entityIRI === entityIRI);
+    if(entry){
+      return entry.entityInfo.label;
+    }
+  }
+  extractRDFValues(linkedList: any[] , selectedGenId:any[]): any[][] {
+    const result: any[][] = [];
+
+    selectedGenId.forEach(selectedId => {
+      const linkedListEntry = linkedList.find(node => node['@id'] === selectedId);
+      if (linkedListEntry) {
+        const values: string[] = [];
+        let currentNode = linkedListEntry;
+
+        while (currentNode) {
+          const first = currentNode[`${RDF}first`];
+          if (first){
+            const firstId = first?.[0]['@id'];
+            const value = this.getLabelFromEntityIRI(firstId);
+            values.push(value);
+          }
+          currentNode = currentNode[`${RDF}rest`]
+              ? linkedList.find(node => node['@id'] === currentNode[`${RDF}rest`][0]['@id'])
+              : null;
         }
-        this.genidMap.get(id).push(value.toString());
+
+        const newGenid = selectedId;
+        const properties = values;
+        const chainItem : PropertyChainModel= {
+          genId: newGenid,
+          values: properties,
+          formattedValuesStr: this.formatAdditionalProperties(properties)
+        };
+        this.propertyChainDatas.push(chainItem);
+
+        result.push(values);
       }
     });
-
-    return Array.from(this.genidMap.values());
+    return result;
   }
 
   updateProperties(){
-
       if(this.propertyChainDatas.length >0){
         this.propertyChainDatas.forEach(p=>{
           if(p.values){
-          p.formattedValuesStr= this.formatAdditionalProperties(p.values);
+           if(this.oldHP !== undefined) {
+             p.values = p.values.map(str => (str === this.oldHP ? this.hasParent : str));
+           }
+            p.formattedValuesStr = this.formatAdditionalProperties(p.values);
           }
         });
       }
@@ -150,7 +178,7 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
 
       let formatString = 'x';
       chains.forEach(p=> {
-          formatString += ` '${p}' &nbsp<span class="blue-o">o</span>&nbsp`;
+        formatString += ` '${p}' &nbsp<span class="blue-o">o</span>&nbsp`;
       });
       formatString = formatString.substring(0, formatString.length - 34);
       formatString += `z => x  '${this.hasParent}' z`;
@@ -161,18 +189,20 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
 
   extractPropertyChainAxioms(response: any): string {
     const propertyChainAxioms: string[] = [];
+    const selectedId = this.os.listItem.selected['@id'];
 
     if (response && Array.isArray(response)) {
-      response.forEach((addition: any) => {
-          if (addition['http://www.w3.org/2002/07/owl#PropertyChainAxiom'] &&
-              Array.isArray(addition['http://www.w3.org/2002/07/owl#PropertyChainAxiom'])) {
-            addition['http://www.w3.org/2002/07/owl#PropertyChainAxiom'].forEach((item: any) => {
-              const genid = item['@id']?.split('/').pop()?.split('-')[1];
-              if (genid) {
-                propertyChainAxioms.push(genid);
-              }
-            });
-          }
+      const genTempId = response.filter(m => m['@id'] === selectedId);
+      genTempId.forEach((addition: any) => {
+        if (addition[`${OWL}propertyChainAxiom`] &&
+            Array.isArray(addition[`${OWL}propertyChainAxiom`])) {
+          addition[`${OWL}propertyChainAxiom`].forEach((item: any) => {
+            const genid = item['@id'];
+            if (genid) {
+              propertyChainAxioms.push(genid);
+            }
+          });
+        }
       });
     }
 
@@ -191,15 +221,15 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
           if (result) {
             this.cm.getData.subscribe(data =>{
               const newGenid = this.extractPropertyChainAxioms(data.additions);
-
-              const properties = this.extractPropertyChainValues(data.additions,[newGenid]);
+              const properties = result.additionalProperties;
 
               const chainItem : PropertyChainModel= {
                 genId: newGenid,
-                values: properties[properties.length - 1],
-                formattedValuesStr: this.formatAdditionalProperties(properties[properties.length - 1])
+                values: properties,
+                formattedValuesStr: this.formatAdditionalProperties(properties)
               };
               this.propertyChainDatas.push(chainItem);
+
             });
 
           }
@@ -207,9 +237,18 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
   }
 
   extractRemovePropertyChainValues(response, genId: string): JSONLDObject[] {
-    return response.filter(obj => obj['@id'].includes(genId));
+    const obj = response.find(obj => obj['@id'] === genId);
+
+    if(!obj || obj[`${RDF}rest`]?.[0]['@id'] === `${RDF}nil`){
+      return [];
+    }
+
+    const nextGenId = obj[`${RDF}rest`]?.[0]['@id'];
+    const nextResponses = this.extractRemovePropertyChainValues(response,nextGenId);
+
+     return[obj, ...nextResponses];
   }
-  openRemoveOverlay(propIndex: number, propValue: string,removeGenId:string) {
+  openRemoveOverlay(propIndex: number, propValue: string,removeGenId:string,removeValues:string[]) {
     this.dialog
         .open(ConfirmModalComponent, {
           data: {
@@ -219,66 +258,48 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
         .afterClosed()
         .subscribe((result) => {
           if (result) {
-            const response = this.os.listItem.inProgressCommit.additions;
             const responseBlankNode= this.os.listItem.inProgressCommit.additions;
             const deletionObj:any[] = [];
-            const deletedData :JSONLDObject[] = this.extractRemovePropertyChainValues(responseBlankNode,removeGenId);
+            const deletedData :JSONLDObject[] =
+                this.extractRemovePropertyChainValues(responseBlankNode,removeGenId);
             deletionObj.push(deletedData);
-            if (response['http://www.w3.org/2002/07/owl#PropertyChainAxiom']) {
-              const propertyChainAxiom = response['http://www.w3.org/2002/07/owl#PropertyChainAxiom'];
-              const axiomData:any[]=[];
-              if (propertyChainAxiom && Array.isArray(propertyChainAxiom)) {
-                propertyChainAxiom.forEach(item => {
-                  const genid = item['@id'].split('/').pop().split('-')[1];
-                  if (genid === removeGenId){
-                    propertyChainAxiom.splice(propIndex,1);
-                  }
-                });
-              }
-            }
-            this.os.addToDeletions(this.os.listItem.versionedRdfRecord.recordId, {
-              '@id': this.os.listItem.selected['@id'],'@type': ['http://www.w3.org/2002/07/owl#PropertyChainAxiom'],
-              [`${OWL}PropertyChainAxiom`]: deletionObj
-            });
-            this.os.saveCurrentChanges().subscribe();
-            const index = this.propertyChainDatas.findIndex(item => item.genId === removeGenId);
-            if(index !== -1){
+
+            const index = this.propertyChainDatas.
+            findIndex(item => item.genId === removeGenId);
+            if (index !== -1){
               this.propertyChainDatas.splice(index,1);
             }
+            this.os.addToDeletions(this.os.listItem.versionedRdfRecord.recordId, {
+              '@id': this.os.listItem.selected['@id'],'@type': [`${OWL}propertyChainAxiom`],
+              [`${OWL}propertyChainAxiom`]: deletionObj
+            });
+            this.os.saveCurrentChanges().subscribe();
           }
         });
-  }
-  extractValues(inputString:string):string[]{
-    const regex = /'(.*?)'(?=.*z\s*=>)/g;
-    const extractValues:string[] = [];
-    let match;
-
-    while ((match = regex.exec(inputString)) !== null){
-        extractValues.push(match[1]);
-    }
-    return extractValues;
   }
 
   editClicked(index: number, property: string, removeGenId:string,values:string[]) {
     this.additional = [];
-    const props = this.extractValues(property);
     this.dialog
         .open(PropertyChainOverlayComponent, {
           data: {
             editing: true,
-            additionalProperties: props,
-            genId:removeGenId,
-            removeIndex:index
+            additionalProperties: values,
+            genId: removeGenId,
+            removeIndex: index
           },
         })
         .afterClosed()
         .subscribe((result) => {
           if (result) {
+            const updateGenId = this.extractPropertyChainAxioms(this.os.listItem.additions);
             const updatedProperty = this.formatAdditionalProperties(result.additionalProperties);
-            if(updatedProperty && updatedProperty.length > 0){
-              this.propertyChainDatas[index].genId = removeGenId;
-              this.propertyChainDatas[index].values = values;
-              this.propertyChainDatas[index].formattedValuesStr = updatedProperty;
+            if (updatedProperty && updatedProperty.length > 0) {
+              this.cm.getData.subscribe(data =>{
+                this.propertyChainDatas[index].genId = this.extractPropertyChainAxioms(data.additions);
+                this.propertyChainDatas[index].values = result.additionalProperties;
+                this.propertyChainDatas[index].formattedValuesStr = updatedProperty;
+              });
             }
           }
         });

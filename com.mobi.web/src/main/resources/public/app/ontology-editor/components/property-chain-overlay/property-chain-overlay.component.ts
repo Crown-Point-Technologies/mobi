@@ -29,7 +29,7 @@ import {OntologyStateService} from '../../../shared/services/ontologyState.servi
 import {ToastService} from '../../../shared/services/toast.service';
 import {JSONLDObject} from '../../../shared/models/JSONLDObject.interface';
 import {PropertyManagerService} from '../../../shared/services/propertyManager.service';
-import {filter} from 'lodash';
+import {cloneDeep, filter} from 'lodash';
 
 @Component({
   selector: 'app-property-chain-overlay',
@@ -116,13 +116,15 @@ export class PropertyChainOverlayComponent implements OnInit {
     };
     const additionalProperties = this.propertyForm.controls.additionalProperties.value;
     this.createPropertyObj = additionalProperties;
-    const propertyName = 'PropertyChainAxiom';
-    const addedValues = filter(this.createPropertyObj, value => this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}#${value}`));
-    const valueObjs = addedValues.map(value => ({'@id': `${this.os.listItem.ontologyId}/#${value}`}));
+    const propertyName = 'propertyChainAxiom';
+    const addedValues = filter(this.createPropertyObj, value =>
+        this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}${value}`));
+    const valueObjs = addedValues.map(value =>
+        ({'@id': this.os.getEntityIRIFromLabel(value)}));
 
     const json: JSONLDObject = {
       '@id': this.os.listItem.selected['@id'],
-      [`${OWL}PropertyChainAxiom`]: [{'@list': valueObjs}]
+      [`${OWL}propertyChainAxiom`]: [{'@list': valueObjs}]
     };
     this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, json);
     this.os.saveCurrentChanges().subscribe();
@@ -142,8 +144,8 @@ export class PropertyChainOverlayComponent implements OnInit {
     const deletedData :JSONLDObject[] = this.extractRemovePropertyChainValues(responseBlankNode,removeGenId);
     deletionObj.push(deletedData);
 
-    if (response['http://www.w3.org/2002/07/owl#PropertyChainAxiom']) {
-      const propertyChainAxiom = response['http://www.w3.org/2002/07/owl#PropertyChainAxiom'];
+    if (response[`${OWL}propertyChainAxiom`]) {
+      const propertyChainAxiom = response[`${OWL}propertyChainAxiom`];
       if (propertyChainAxiom && Array.isArray(propertyChainAxiom)) {
         propertyChainAxiom.forEach(item => {
           const genid = item['@id'].split('/').pop().split('-')[1];
@@ -154,8 +156,8 @@ export class PropertyChainOverlayComponent implements OnInit {
       }
     }
     this.os.addToDeletions(this.os.listItem.versionedRdfRecord.recordId, {
-      '@id': this.os.listItem.selected['@id'],'@type': ['http://www.w3.org/2002/07/owl#PropertyChainAxiom'],
-      [`${OWL}PropertyChainAxiom`]: deletionObj
+      '@id': this.os.listItem.selected['@id'],'@type': [`${OWL}propertyChainAxiom`],
+      [`${OWL}propertyChainAxiom`]: deletionObj
     });
     if (this.data.additionalProperties && this.data.additionalProperties.length > 0) {
       this.editData = {
@@ -164,15 +166,17 @@ export class PropertyChainOverlayComponent implements OnInit {
     }
 
     const additionalProperties = this.propertyForm.controls.additionalProperties.value;
-    const propertyName = 'PropertyChainAxiom';
+    const propertyName = 'propertyChainAxiom';
 
-    const addedOldValues = filter(this.oldData,oldValue=>this.pm.addPropertyId(this.os.listItem.selected,propertyName,`${OWL}#${oldValue}`));
-    const addedValues = filter(additionalProperties, value => this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}#${value}`));
+    const addedValues = filter(additionalProperties, value =>
+        this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}${value}`));
     if (addedValues.length) {
-      const valueObjs = addedValues.map(value => ({'@id': `${this.os.listItem.ontologyId}#${value}`}));
+      const valueObjs = addedValues.map(value =>
+          ({'@id': this.os.getEntityIRIFromLabel(value)}));
+
       this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, {
         '@id': this.os.listItem.selected['@id'],
-        [`${OWL}PropertyChainAxiom`]: [{'@list': valueObjs}]
+        [`${OWL}propertyChainAxiom`]: [{'@list': valueObjs}]
       });
       this.os.saveCurrentChanges().subscribe();
       this.toast.createSuccessToast('Property Chain updated successfully');
