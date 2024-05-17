@@ -290,6 +290,17 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
     }
 
     /**
+     * Get the EntityIRI from the label
+     **/
+    getEntityIRIFromLabel(label:string) :string {
+        const entry = this.listItem.objectProperties.flat.
+        find(entry => entry.entityInfo.label === label);
+        if(entry){
+            return entry.entityIRI;
+        }
+    }
+
+/**
      * Adds the error message to the list item with the identified id.
      *
      * @param {string} id The id of the upload item.
