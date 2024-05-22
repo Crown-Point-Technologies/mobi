@@ -29,7 +29,8 @@ import {OntologyStateService} from '../../../shared/services/ontologyState.servi
 import {ToastService} from '../../../shared/services/toast.service';
 import {JSONLDObject} from '../../../shared/models/JSONLDObject.interface';
 import {PropertyManagerService} from '../../../shared/services/propertyManager.service';
-import {cloneDeep, filter} from 'lodash';
+import {cloneDeep, filter, intersection} from 'lodash';
+import {first} from "rxjs/operators";
 
 @Component({
   selector: 'app-property-chain-overlay',
@@ -49,7 +50,7 @@ export class PropertyChainOverlayComponent implements OnInit {
 
   constructor(private dialogRef: MatDialogRef<PropertyChainOverlayComponent>,
               @Inject(MAT_DIALOG_DATA) public data: PropertyOverlayDataOptions, private os:OntologyStateService,
-              private toast:ToastService,private pm: PropertyManagerService) {
+              private toast:ToastService) {
     this.createForm();
   }
 
@@ -116,23 +117,16 @@ export class PropertyChainOverlayComponent implements OnInit {
     };
     const additionalProperties = this.propertyForm.controls.additionalProperties.value;
     this.createPropertyObj = additionalProperties;
-    const propertyName = 'propertyChainAxiom';
-    const addedValues = filter(this.createPropertyObj, value =>
-        this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}${value}`));
-    const valueObjs = addedValues.map(value =>
+    const propertyName = `${OWL}propertyChainAxiom`;
+    const valueObjs = additionalProperties.map(value =>
         ({'@id': this.os.getEntityIRIFromLabel(value)}));
-
     const json: JSONLDObject = {
       '@id': this.os.listItem.selected['@id'],
-      [`${OWL}propertyChainAxiom`]: [{'@list': valueObjs}]
+      [propertyName]: [{'@list': valueObjs}]
     };
     this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, json);
     this.os.saveCurrentChanges().subscribe();
     this.dialogRef.close(newData);
-  }
-
-  extractRemovePropertyChainValues(response, genId: string): JSONLDObject[] {
-    return response.filter(obj => obj['@id'].includes(genId));
   }
 
   editPropertyChain() {
@@ -141,7 +135,7 @@ export class PropertyChainOverlayComponent implements OnInit {
     const deletionObj:any[] = [];
     const removeGenId = this.data.genId;
     const propIndex = this.data.removeIndex;
-    const deletedData :JSONLDObject[] = this.extractRemovePropertyChainValues(responseBlankNode,removeGenId);
+    const deletedData :JSONLDObject[] = this.os.extractRemovePropertyChainValues(responseBlankNode,removeGenId);
     deletionObj.push(deletedData);
 
     if (response[`${OWL}propertyChainAxiom`]) {
@@ -166,12 +160,7 @@ export class PropertyChainOverlayComponent implements OnInit {
     }
 
     const additionalProperties = this.propertyForm.controls.additionalProperties.value;
-    const propertyName = 'propertyChainAxiom';
-
-    const addedValues = filter(additionalProperties, value =>
-        this.pm.addPropertyId(this.os.listItem.selected, propertyName, `${OWL}${value}`));
-    if (addedValues.length) {
-      const valueObjs = addedValues.map(value =>
+      const valueObjs = additionalProperties.map(value =>
           ({'@id': this.os.getEntityIRIFromLabel(value)}));
 
       this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, {
@@ -181,7 +170,6 @@ export class PropertyChainOverlayComponent implements OnInit {
       this.os.saveCurrentChanges().subscribe();
       this.toast.createSuccessToast('Property Chain updated successfully');
       this.dialogRef.close(this.editData);
-    }
   }
 
 }

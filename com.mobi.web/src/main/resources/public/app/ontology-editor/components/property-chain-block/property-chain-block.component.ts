@@ -29,6 +29,7 @@ import { JSONLDObject } from '../../../shared/models/JSONLDObject.interface';
 import { ConfirmModalComponent } from '../../../shared/components/confirmModal/confirmModal.component';
 import {DCTERMS, OWL, RDF, RDFS} from '../../../prefixes';
 import {CatalogManagerService} from '../../../shared/services/catalogManager.service';
+import {PropertyManagerService} from "../../../shared/services/propertyManager.service";
 
 interface PropertyChainModel {
   genId:string,
@@ -47,16 +48,14 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
 
   hasParent: string;
   objectProp:string | undefined;
-  objectPropertyMap:Map<string, string[]> = new Map();
-  objectMap:Map<string,string>=new Map();
-  genidMap = new Map<string,string[]>();
   propertyChainDatas:PropertyChainModel[]= [];
   oldHP:string;
   constructor(
       private dialog: MatDialog,
       public os: OntologyStateService,
       public om: OntologyManagerService,
-      private cm : CatalogManagerService
+      private cm : CatalogManagerService,
+      private pm: PropertyManagerService
   ) { }
 
   async ngOnInit(): Promise<any> {
@@ -70,58 +69,30 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
       const selectedAnnotationsLabel = selectedLabel?.[0]['@value'];
       const selectedProperty: string = this.os.listItem.selected[`${DCTERMS}title`];
       const selectedTitle = selectedProperty?.[0]['@value'];
-      if(selectedTitle){
-        this.hasParent = selectedTitle;
-      } else if(selectedAnnotationsLabel){
+       if (selectedAnnotationsLabel){
         this.hasParent = selectedAnnotationsLabel;
+      } else if (selectedTitle){
+        this.hasParent = selectedTitle;
       } else {
         this.hasParent = this.om.getEntityName(this.os.listItem.selected);
       }
-        this.updateProperties();
+      this.updateProperties();
   }
 
   updatePropertyChainData() {
-    const selectedResponse:any = this.os.listItem.selected;
-    const genids = this.extractGenids(selectedResponse);
+    const selectedResponse: any = this.os.listItem.selected;
+    const genids = this.os.extractGenids(selectedResponse);
     const response = this.os.listItem.selectedBlankNodes;
-    const properties = (response && genids) ? this.extractRDFValues(response, genids) : [];
-
-    for (const [key,value] of this.genidMap.entries()){
-      const chainItem : PropertyChainModel= {
-        genId: key,
-        values: value,
-        formattedValuesStr: this.formatAdditionalProperties(value)
-      };
-      this.propertyChainDatas.push(chainItem);
-    }
-
-    const newProperties:string[] = [];
-    properties.forEach(data =>{
-      newProperties.push(this.formatAdditionalProperties(data));
-    });
-    this.objectPropertyMap.set(this.objectProp,newProperties);
+    if (response && genids) {
+      this.extractRDFValues(response, genids);
   }
-
-  extractGenids(response: any[]): string[] {
-    const genids = [];
-
-    if (this.objectProp && response[`${OWL}propertyChainAxiom`]) {
-        const propertyChainAxiom = response[`${OWL}propertyChainAxiom`];
-        if (propertyChainAxiom && Array.isArray(propertyChainAxiom)) {
-          propertyChainAxiom.forEach(item => {
-            const genid = item['@id'];
-            genids.push(genid);
-          });
-        }
-      return genids;
-    }
   }
 
   getLabelFromEntityIRI(entityIRI:string):string {
     const entry = this.os.listItem.objectProperties.flat.
     find(entry => entry.entityIRI === entityIRI);
-    if(entry){
-      return entry.entityInfo.label;
+    if (entry){
+      return entry?.entityInfo.label;
     }
   }
   extractRDFValues(linkedList: any[] , selectedGenId:any[]): any[][] {
@@ -137,8 +108,8 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
           const first = currentNode[`${RDF}first`];
           if (first){
             const firstId = first?.[0]['@id'];
-            const value = this.getLabelFromEntityIRI(firstId);
-            values.push(value);
+            const value =this.getLabelFromEntityIRI(firstId);
+              values.push(value);
           }
           currentNode = currentNode[`${RDF}rest`]
               ? linkedList.find(node => node['@id'] === currentNode[`${RDF}rest`][0]['@id'])
@@ -161,10 +132,10 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
   }
 
   updateProperties(){
-      if(this.propertyChainDatas.length >0){
+      if (this.propertyChainDatas.length >0){
         this.propertyChainDatas.forEach(p=>{
-          if(p.values){
-           if(this.oldHP !== undefined) {
+          if (p.values){
+           if (this.oldHP !== undefined && this.oldHP !== this.hasParent) {
              p.values = p.values.map(str => (str === this.oldHP ? this.hasParent : str));
            }
             p.formattedValuesStr = this.formatAdditionalProperties(p.values);
@@ -229,25 +200,13 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
                 formattedValuesStr: this.formatAdditionalProperties(properties)
               };
               this.propertyChainDatas.push(chainItem);
-
+              this.pm.addPropertyId(this.os.listItem.selected, `${OWL}propertyChainAxiom`, newGenid);
             });
 
           }
         });
   }
 
-  extractRemovePropertyChainValues(response, genId: string): JSONLDObject[] {
-    const obj = response.find(obj => obj['@id'] === genId);
-
-    if(!obj || obj[`${RDF}rest`]?.[0]['@id'] === `${RDF}nil`){
-      return [];
-    }
-
-    const nextGenId = obj[`${RDF}rest`]?.[0]['@id'];
-    const nextResponses = this.extractRemovePropertyChainValues(response,nextGenId);
-
-     return[obj, ...nextResponses];
-  }
   openRemoveOverlay(propIndex: number, propValue: string,removeGenId:string,removeValues:string[]) {
     this.dialog
         .open(ConfirmModalComponent, {
@@ -261,7 +220,7 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
             const responseBlankNode= this.os.listItem.inProgressCommit.additions;
             const deletionObj:any[] = [];
             const deletedData :JSONLDObject[] =
-                this.extractRemovePropertyChainValues(responseBlankNode,removeGenId);
+                this.os.extractRemovePropertyChainValues(responseBlankNode,removeGenId);
             deletionObj.push(deletedData);
 
             const index = this.propertyChainDatas.
@@ -292,13 +251,14 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
         .afterClosed()
         .subscribe((result) => {
           if (result) {
-            const updateGenId = this.extractPropertyChainAxioms(this.os.listItem.additions);
             const updatedProperty = this.formatAdditionalProperties(result.additionalProperties);
             if (updatedProperty && updatedProperty.length > 0) {
               this.cm.getData.subscribe(data =>{
-                this.propertyChainDatas[index].genId = this.extractPropertyChainAxioms(data.additions);
+                const newGenid = this.extractPropertyChainAxioms(data.additions);
+                this.propertyChainDatas[index].genId = newGenid;
                 this.propertyChainDatas[index].values = result.additionalProperties;
                 this.propertyChainDatas[index].formattedValuesStr = updatedProperty;
+                this.pm.addPropertyId(this.os.listItem.selected, `${OWL}propertyChainAxiom`, newGenid);
               });
             }
           }

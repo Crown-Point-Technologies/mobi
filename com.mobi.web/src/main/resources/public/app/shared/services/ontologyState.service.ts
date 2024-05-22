@@ -66,7 +66,7 @@ import {
     unset,
     values,
     without,
-    cloneDeep
+    cloneDeep, property
 } from 'lodash';
 import { switchMap, map, catchError, tap, finalize } from 'rxjs/operators';
 import { ElementRef, Injectable } from '@angular/core';
@@ -295,7 +295,7 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
     getEntityIRIFromLabel(label:string) :string {
         const entry = this.listItem.objectProperties.flat.
         find(entry => entry.entityInfo.label === label);
-        if(entry){
+        if (entry){
             return entry.entityIRI;
         }
     }
@@ -2139,6 +2139,7 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
         const entityIRI = this.getActiveEntityIRI();
         delete this.listItem.objectProperties.iris[entityIRI];
         delete this.listItem.propertyIcons[entityIRI];
+        this.deletePropertyChainAxiom();
         this.handleDeletedProperty(this.listItem.selected);
         this.deleteEntityFromHierarchy(this.listItem.objectProperties, entityIRI);
         this.listItem.objectProperties.flat = this.flattenHierarchy(this.listItem.objectProperties);
@@ -2159,6 +2160,58 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
         this.listItem.dataProperties.flat = this.flattenHierarchy(this.listItem.dataProperties);
         this.commonDelete(entityIRI, true).subscribe();
     }
+
+    /**
+     * Delete the property chain axiom
+     **/
+    extractGenids(response: JSONLDObject): string[] {
+        const genids = [];
+
+        if (response[`${OWL}propertyChainAxiom`]) {
+            const propertyChainAxiom = response[`${OWL}propertyChainAxiom`];
+            if (propertyChainAxiom && Array.isArray(propertyChainAxiom)) {
+                propertyChainAxiom.forEach(item => {
+                    const genid = item['@id'];
+                    genids.push(genid);
+                });
+            }
+            return genids;
+        }
+    }
+
+    extractRemovePropertyChainValues(response, genId: string): JSONLDObject[] {
+        const obj = response.find(obj => obj['@id'] === genId);
+
+        if (!obj){
+            return [];
+        }
+
+        if (obj[`${RDF}rest`]?.[0]['@id'] === `${RDF}nil`){
+            return [obj];
+        }
+
+        const nextGenId = obj[`${RDF}rest`]?.[0]['@id'];
+        const nextResponses = this.extractRemovePropertyChainValues(response,nextGenId);
+
+        return [obj, ...nextResponses];
+    }
+
+    /**
+     *Delete the currently property chain axiom from the current `listItem`.
+     * **/
+    deletePropertyChainAxiom(){
+        const genIds = this.extractGenids(this.listItem.selected);
+        for(let i=0; i<genIds.length;i++){
+            const deleteDataFromInProgress = this.extractRemovePropertyChainValues(this.listItem.inProgressCommit.additions,genIds[i]);
+            this.addToDeletions(this.listItem.versionedRdfRecord.recordId, {
+                '@id': this.listItem.selected['@id'],'@type': [`${OWL}propertyChainAxiom`],
+                [`${OWL}propertyChainAxiom`]: deleteDataFromInProgress
+            });
+        }
+
+        delete this.listItem.selected[`${OWL}propertyChainAxiom`];
+    }
+
     /**
      * Deletes the currently selected Annotation Property from the current `listItem`. Updates the InProgressCommit as 
      * well.
