@@ -12,35 +12,16 @@ package com.mobi.ontology.rest;
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-
-import static com.mobi.rest.util.RestQueryUtils.QUERY_INVALID_MESSAGE;
-import static com.mobi.rest.util.RestUtils.CSV_MIME_TYPE;
-import static com.mobi.rest.util.RestUtils.JSON_MIME_TYPE;
-import static com.mobi.rest.util.RestUtils.LDJSON_MIME_TYPE;
-import static com.mobi.rest.util.RestUtils.RDFXML_MIME_TYPE;
-import static com.mobi.rest.util.RestUtils.TSV_MIME_TYPE;
-import static com.mobi.rest.util.RestUtils.TURTLE_MIME_TYPE;
-import static com.mobi.rest.util.RestUtils.XLSX_MIME_TYPE;
-import static com.mobi.rest.util.RestUtils.XLS_MIME_TYPE;
-import static com.mobi.rest.util.RestUtils.checkStringParam;
-import static com.mobi.rest.util.RestUtils.convertFileExtensionToMimeType;
-import static com.mobi.rest.util.RestUtils.getActiveUser;
-import static com.mobi.rest.util.RestUtils.getObjectNodeFromJsonld;
-import static com.mobi.rest.util.RestUtils.getRDFFormatFileExtension;
-import static com.mobi.rest.util.RestUtils.getRDFFormatMimeType;
-import static com.mobi.rest.util.RestUtils.jsonldToModel;
-import static com.mobi.rest.util.RestUtils.modelToJsonld;
-import static com.mobi.security.policy.api.xacml.XACML.POLICY_PERMIT_OVERRIDES;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -48,11 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mobi.catalog.api.BranchManager;
-import com.mobi.catalog.api.CommitManager;
-import com.mobi.catalog.api.CompiledResourceManager;
-import com.mobi.catalog.api.DifferenceManager;
-import com.mobi.catalog.api.RecordManager;
+import com.mobi.catalog.api.*;
 import com.mobi.catalog.api.builder.Difference;
 import com.mobi.catalog.api.ontologies.mcat.Branch;
 import com.mobi.catalog.api.ontologies.mcat.InProgressCommit;
@@ -61,41 +38,20 @@ import com.mobi.catalog.api.record.config.OperationConfig;
 import com.mobi.catalog.api.record.config.RecordCreateSettings;
 import com.mobi.catalog.api.record.config.RecordOperationConfig;
 import com.mobi.catalog.api.record.config.VersionedRDFRecordCreateSettings;
-import com.mobi.catalog.config.CatalogConfig;
 import com.mobi.catalog.config.CatalogConfigProvider;
 import com.mobi.exception.MobiException;
 import com.mobi.jaas.api.engines.EngineManager;
 import com.mobi.jaas.api.ontologies.usermanagement.User;
-import com.mobi.ontology.core.api.AnnotationProperty;
-import com.mobi.ontology.core.api.DataProperty;
-import com.mobi.ontology.core.api.Datatype;
-import com.mobi.ontology.core.api.Hierarchy;
-import com.mobi.ontology.core.api.Individual;
-import com.mobi.ontology.core.api.OClass;
-import com.mobi.ontology.core.api.ObjectProperty;
-import com.mobi.ontology.core.api.Ontology;
-import com.mobi.ontology.core.api.OntologyId;
-import com.mobi.ontology.core.api.OntologyManager;
+import com.mobi.ontology.core.api.*;
 import com.mobi.ontology.core.api.ontologies.ontologyeditor.OntologyRecord;
 import com.mobi.ontology.core.utils.MobiOntologyException;
 import com.mobi.ontology.rest.json.EntityNames;
 import com.mobi.ontology.utils.OntologyModels;
 import com.mobi.ontology.utils.OntologyUtils;
 import com.mobi.ontology.utils.cache.OntologyCache;
-import com.mobi.persistence.utils.BNodeUtils;
-import com.mobi.persistence.utils.Bindings;
-import com.mobi.persistence.utils.JSONQueryResults;
-import com.mobi.persistence.utils.Models;
-import com.mobi.persistence.utils.ParsedModel;
-import com.mobi.persistence.utils.RDFFiles;
+import com.mobi.persistence.utils.*;
 import com.mobi.persistence.utils.api.BNodeService;
-import com.mobi.rest.security.annotations.ActionAttributes;
-import com.mobi.rest.security.annotations.ActionId;
-import com.mobi.rest.security.annotations.AttributeValue;
-import com.mobi.rest.security.annotations.DefaultResourceId;
-import com.mobi.rest.security.annotations.ResourceId;
-import com.mobi.rest.security.annotations.ValueType;
-import com.mobi.rest.util.ConnectionObjects;
+import com.mobi.rest.security.annotations.*;
 import com.mobi.rest.util.ErrorUtils;
 import com.mobi.rest.util.RestQueryUtils;
 import com.mobi.rest.util.RestUtils;
@@ -118,15 +74,8 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.StopWatch;
-import org.eclipse.rdf4j.model.BNode;
-import org.eclipse.rdf4j.model.IRI;
-import org.eclipse.rdf4j.model.Literal;
-import org.eclipse.rdf4j.model.Model;
-import org.eclipse.rdf4j.model.ModelFactory;
-import org.eclipse.rdf4j.model.Resource;
-import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.Value;
-import org.eclipse.rdf4j.model.ValueFactory;
+import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.model.impl.DynamicModelFactory;
 import org.eclipse.rdf4j.model.impl.ValidatingValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.OWL;
@@ -135,77 +84,54 @@ import org.eclipse.rdf4j.model.vocabulary.SKOS;
 import org.eclipse.rdf4j.query.MalformedQueryException;
 import org.eclipse.rdf4j.query.QueryLanguage;
 import org.eclipse.rdf4j.query.TupleQueryResult;
-import org.eclipse.rdf4j.query.parser.ParsedGraphQuery;
-import org.eclipse.rdf4j.query.parser.ParsedOperation;
-import org.eclipse.rdf4j.query.parser.ParsedQuery;
-import org.eclipse.rdf4j.query.parser.ParsedTupleQuery;
-import org.eclipse.rdf4j.query.parser.QueryParserUtil;
+import org.eclipse.rdf4j.query.parser.*;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.repository.RepositoryResult;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFParseException;
-import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import javax.annotation.Nullable;
+import javax.annotation.security.RolesAllowed;
+import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.*;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.StreamingOutput;
+import java.io.*;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.Nullable;
-import javax.annotation.security.RolesAllowed;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.StreamingOutput;
+
+import static com.mobi.rest.util.RestQueryUtils.QUERY_INVALID_MESSAGE;
+import static com.mobi.rest.util.RestUtils.*;
+import static com.mobi.security.policy.api.xacml.XACML.POLICY_PERMIT_OVERRIDES;
 
 @Path("/ontologies")
 @Component(service = OntologyRest.class, immediate = true)
 @JaxrsResource
 public class OntologyRest {
+    private Difference difference;
+
 
     private final ModelFactory modelFactory = new DynamicModelFactory();
     private final ValueFactory valueFactory = new ValidatingValueFactory();
 
     @Reference
     protected OntologyManager ontologyManager;
+    private String GET_ALL_CLASSES;
 
     @Reference
     protected CatalogConfigProvider configProvider;
@@ -240,6 +166,7 @@ public class OntologyRest {
     private static final Logger log = LoggerFactory.getLogger(OntologyRest.class);
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final String GET_ENTITY_QUERY;
+    private static final String GET_GENERAL_CLASS_AXIOM_QUERY;
     private static final String GET_PROPERTY_RANGES;
     private static final String GET_CLASS_PROPERTIES;
     private static final String GET_NO_DOMAIN_PROPERTIES;
@@ -248,6 +175,9 @@ public class OntologyRest {
 
     static {
         try {
+            GET_GENERAL_CLASS_AXIOM_QUERY = IOUtils.toString(
+                    OntologyRest.class.getResourceAsStream("/general-class-axioms.rq"), StandardCharsets.UTF_8
+            );
             GET_ENTITY_QUERY = IOUtils.toString(
                     OntologyRest.class.getResourceAsStream("/retrieve-entity.rq"), StandardCharsets.UTF_8
             );
@@ -848,7 +778,7 @@ public class OntologyRest {
         return bNodeService.deterministicSkolemize(
                 compiledResourceManager.getCompiledResource(recordId, branchId, commitId, conn), bNodesMap);
     }
-    
+
     /**
      * Returns a JSON object with keys for the list of IRIs of derived skos:Concepts, the list of IRIs of derived
      * skos:ConceptSchemes, an object with the concept hierarchy and index, and an object with the concept scheme
@@ -3528,6 +3458,100 @@ public class OntologyRest {
         try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
             return handleSparqlQuery(servletRequest, recordIdStr, branchIdStr, commitIdStr, includeImports,
                     applyInProgressCommit, acceptString, queryString, fileType, fileName, conn);
+        }
+    }
+
+    @GET
+    @Path("{recordId}/general-class-axioms/{entityId}")
+    @Produces({JSON_MIME_TYPE, TURTLE_MIME_TYPE, LDJSON_MIME_TYPE, RDFXML_MIME_TYPE})
+    @Operation(
+            tags = "ontologies",
+            summary = "Retrieves the limited results of the provided query",
+            responses = {
+                    @ApiResponse(responseCode = "200",
+                            description = "The SPARQL 1.1 results in mime type specified by accept header",
+                            content = {
+                                    @Content(mediaType = "*/*"),
+                                    @Content(mediaType = TURTLE_MIME_TYPE),
+                                    @Content(mediaType = LDJSON_MIME_TYPE),
+                                    @Content(mediaType = RDFXML_MIME_TYPE),
+                                    @Content(mediaType = JSON_MIME_TYPE)
+                            }),
+                    @ApiResponse(responseCode = "400", description = "BAD REQUEST", content = {
+                            @Content(mediaType = MediaType.APPLICATION_JSON,
+                                    schema = @Schema(implementation = ErrorObjectSchema.class)
+                            )
+                    }),
+                    @ApiResponse(responseCode = "403", description = "Permission Denied"),
+                    @ApiResponse(responseCode = "500", description = "INTERNAL SERVER ERROR", content = {
+                            @Content(mediaType = MediaType.APPLICATION_JSON,
+                                    schema = @Schema(implementation = ErrorObjectSchema.class)
+                            )
+                    })
+            }
+    )
+    @RolesAllowed("user")
+    @ActionId(value = Read.TYPE)
+    @ResourceId(type = ValueType.PATH, value = "recordId")
+    public Response getGeneralAxiomByEntityId(@PathParam("recordId") String recordId,
+                                              @PathParam("entityId") String entityId,
+                                              @Context HttpServletRequest servletRequest) {
+        try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
+
+            Ontology ontology = getOntology(servletRequest, recordId, null, null, true, conn)
+                    .orElseThrow(() -> RestUtils.getErrorObjBadRequest(
+                            new IllegalArgumentException("The ontology could not be found.")));
+
+            IRI entity = valueFactory.createIRI(entityId);
+            String queryString = GET_GENERAL_CLASS_AXIOM_QUERY.replace("%ENTITY%", "<" + entity.stringValue() + ">");
+            return getResponseBuilderForGraphQuery(ontology, queryString, true, false, "jsonld")
+                    .type(MediaType.APPLICATION_JSON_TYPE)
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("{recordId}/general-class-axioms")
+    @Produces({JSON_MIME_TYPE, TURTLE_MIME_TYPE, LDJSON_MIME_TYPE, RDFXML_MIME_TYPE})
+    @Operation(
+            tags = "ontologies",
+            summary = "Retrieves the limited results of the provided query",
+            responses = {
+                    @ApiResponse(responseCode = "200",
+                            description = "The SPARQL 1.1 results in mime type specified by accept header",
+                            content = {
+                                    @Content(mediaType = "*/*"),
+                                    @Content(mediaType = TURTLE_MIME_TYPE),
+                                    @Content(mediaType = LDJSON_MIME_TYPE),
+                                    @Content(mediaType = RDFXML_MIME_TYPE),
+                                    @Content(mediaType = JSON_MIME_TYPE)
+                            }),
+                    @ApiResponse(responseCode = "400", description = "BAD REQUEST", content = {
+                            @Content(mediaType = MediaType.APPLICATION_JSON,
+                                    schema = @Schema(implementation = ErrorObjectSchema.class)
+                            )
+                    }),
+                    @ApiResponse(responseCode = "403", description = "Permission Denied"),
+                    @ApiResponse(responseCode = "500", description = "INTERNAL SERVER ERROR", content = {
+                            @Content(mediaType = MediaType.APPLICATION_JSON,
+                                    schema = @Schema(implementation = ErrorObjectSchema.class)
+                            )
+                    })
+            }
+    )
+    @RolesAllowed("user")
+    @ActionId(value = Read.TYPE)
+    @ResourceId(type = ValueType.PATH, value = "recordId")
+    public Response getGeneralAxiom(@PathParam("recordId") String recordId, @Context HttpServletRequest servletRequest) {
+        try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
+            Ontology ontology = getOntology(servletRequest, recordId, null, null, false, conn)
+                    .orElseThrow(() -> RestUtils.getErrorObjBadRequest(
+                            new IllegalArgumentException("The ontology could not be found.")));
+            StreamingOutput output = outputStream -> {
+                ontology.asJsonLD(false, outputStream);
+            };
+
+            return Response.ok(output).build();
         }
     }
 

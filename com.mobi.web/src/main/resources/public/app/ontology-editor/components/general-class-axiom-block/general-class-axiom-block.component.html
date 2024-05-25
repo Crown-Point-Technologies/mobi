@@ -1,0 +1,84 @@
+<!--
+  #%L
+  com.mobi.web
+  $Id:$
+  $HeadURL:$
+  %%
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+  %%
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  #L%
+  -->
+<div class="axiom-block">
+    <div class="section-header">
+        <h5>General Class Axioms</h5>
+        <a *ngIf="os.listItem.selected && !os.isSelectedImported() && os.canModify()"
+           class="float-right fa fa-fw fa-plus" (click)="this.showAxiomOverlay()"></a>
+    </div>
+
+    <div class="property-values mt-3">
+        <div class="prop-header d-flex align-items-baseline clearfix">
+            <p class="text text-truncate m-0" title="{{generalClassAxiomList.iri}}">
+                {{os.getEntityNameByListItem(generalClassAxiomList.iri, os.listItem)}}</p>
+            <small class="ml-1 text-muted text-truncate flex-1">&lt;{{generalClassAxiomList.iri}}&gt;</small>
+        </div>
+<!--        {{os.getEntityNameByListItem(generalClassAxiomList.iri)}} {{"CHECK"}} {{generalClassAxiomList.iri}}-->
+        <div class="prop-value-container d-flex flex-column p-1 ml-3 mt-1" *ngFor="let value of generalClassAxioms;">
+           <div>
+                <span class="value-display-wrapper flex-1 remove-min-width">
+                    {{os.getEntityNameByListItem(selected)}}
+                    <small>&lt;<a (click)="os.goTo(generalClassAxiomList.iri)">{{selected}}</a>&gt;
+                    </small>
+            </span>
+           </div>
+                <div>
+                    <span class="value-display-wrapper flex-1 remove-min-width">
+            <span>{{value}}</span>
+                </span>
+                </div>
+
+
+<!--        <div class="prop-value-container d-flex p-1 ml-3 mt-1" *ngFor="let value of entity[property]; index as $index">-->
+<!--            <span *ngIf="os.isLinkable(value['@id'])" class="value-display-wrapper flex-1 remove-min-width">
+                    {{os.getEntityNameByListItem(value['@id'])}}
+                    <small>&lt;<a (click)="os.goTo(value['@id'])">{{value['@id']}}</a>&gt;
+                    </small></span>-->
+<!--            <ng-template #notLinkable><span class="value-display-wrapper flex-1 remove-min-width">-->
+<!--            <blank-node-value-display *ngIf="isBlankNodeId(value['@id']);
+                    else notBlankNode" [node]="value">
+                    </blank-node-value-display>-->
+<!--            <ng-template #notBlankNode>-->
+<!--                <value-display *ngIf="isHighlightedProp; else noHighlight" [value]="value" [highlightText]="highlightText"></value-display>-->
+<!--                <ng-template #noHighlight><value-display [value]="value"></value-display></ng-template>-->
+<!--            </ng-template>-->
+<!--        </span></ng-template>-->
+
+<!--            For button-->
+<!--            *ngIf="isRemoveSet && !os.isImported(entity['@id']) && os.canModify() (click)="callRemove($index)""-->
+<!--            <div class="button-container">-->
+<!--                <button mat-icon-button color="primary"  title="Delete"><mat-icon>delete</mat-icon></button>-->
+<!--            </div>-->
+        </div>
+    </div>
+<!--    <div class="class-axioms">-->
+<!--        <property-values *ngFor="let axiom of generalClassAxioms"-->
+<!--                         [property]="axiom"-->
+<!--                         [entity]="os.listItem.selected"-->
+<!--                         (remove)="openRemoveOverlay($event)">-->
+<!--        </property-values>-->
+<!--    </div>-->
+<!--    <class-axioms [selected]="os.listItem.selected"></class-axioms>-->
+<!--    <object-property-axioms *ngIf="om.isObjectProperty(os.listItem.selected)" [selected]="os.listItem.selected"></object-property-axioms>-->
+<!--    <datatype-property-axioms *ngIf="om.isDataTypeProperty(os.listItem.selected)" [selected]="os.listItem.selected"></datatype-property-axioms>-->
+</div>

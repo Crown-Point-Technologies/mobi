@@ -1,0 +1,29 @@
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+ PREFIX : <urn:ex:>
+ CONSTRUCT {
+     ?entity ?directpred ?directobj .
+     ?attachedObj ?p2 ?o2 .
+ }
+ WHERE {
+     {
+    	?entity rdfs:subClassOf %ENTITY% ;
+             FILTER(isBlank(?entity))
+        ?entity ?directpred ?directobj .
+     }
+     UNION {
+
+      ?entity rdfs:subClassOf %ENTITY% ;
+              FILTER(isBlank(?entity))
+      ?entity ?p ?blank_node .
+      FILTER(isBlank(?blank_node))
+
+
+    	?blank_node (owl:intersectionOf|owl:someValuesFrom|owl:unionOf|owl:complementOf|owl:oneOf|<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest>|<http://www.w3.org/1999/02/22-rdf-syntax-ns#first>)* ?attachedObj .
+
+         OPTIONAL {
+             ?attachedObj ?p2 ?o2 .
+             FILTER(isBlank(?attachedObj))
+         }
+     }
+}
