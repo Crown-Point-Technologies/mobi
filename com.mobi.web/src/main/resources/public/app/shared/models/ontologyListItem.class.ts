@@ -123,8 +123,13 @@ export class OntologyListItem extends VersionedRdfListItem {
     classToChildProperties: {[key: string]: string[]}
     iriList: string[]
     selected: JSONLDObject
-    objectPropertyMap:Map<string, string[]> = new Map();
+    generalClassAxiom:{[key: string]: string}[];
+    generalClassAxioms:{[key: string]: string}[];
+    gcaOthers:{[key:string]: string}[];
+    gca:string[];
+    objectPropertyMap:Map<string, string[][]> = new Map();
     selectedBlankNodes: JSONLDObject[]
+    gcaMap:Map<string, Map<string, string>> = new Map();
     failedImports: string[]
     seeHistory: boolean
     isSaved: boolean
@@ -212,6 +217,10 @@ export class OntologyListItem extends VersionedRdfListItem {
         this.entityInfo = {};
         this.branches = [];
         this.classesAndIndividuals = {};
+        this.generalClassAxiom = [];
+        this.generalClassAxioms = [];
+        this.gcaOthers = [];
+        this.gca = [];
         this.classesWithIndividuals = [];
         this.individualsParentPath = [];
         this.propertyIcons = {};

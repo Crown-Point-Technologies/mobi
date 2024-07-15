@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -35,6 +35,8 @@ import { OWL, RDF, RDFS, XSD } from '../../prefixes';
 import { splitIRI } from '../pipes/splitIRI.pipe';
 import { JSONLDObject } from '../models/JSONLDObject.interface';
 import { getPropertyId, isBlankNodeId } from '../utility';
+import {LexerATNSimulator} from 'antlr4ts/atn';
+import debug = LexerATNSimulator.debug;
 
 /**
  * @class shared.ManchesterConverterService
@@ -46,11 +48,14 @@ export class ManchesterConverterService {
     expressionClassName = 'manchester-expr';
     restrictionClassName = 'manchester-rest';
     literalClassName = 'manchester-lit';
+    subClassKeyword = {
+        [`${RDFS}subClassOf`]: 'SubClassOf'
+    };
     expressionKeywords = {
         [`${OWL}unionOf`]: ' or ', // A or B
         [`${OWL}intersectionOf`]: ' and ', // A and B
         [`${OWL}complementOf`]: 'not ', // not A
-        [`${OWL}oneOf`]: ', ' // {a1 a2 ... an}.
+        [`${OWL}oneOf`]: ', ' ,// {a1 a2 ... an}.
     };
     // a - the object property on which the restriction applies.
     // b - the restriction on the property values.
@@ -96,6 +101,7 @@ export class ManchesterConverterService {
      * array of blank nodes.
      */
     manchesterToJsonld(str: string, localNameMap: {[key: string]: string}, usingDatatypeRange = false): {errorMessage: string, jsonld: JSONLDObject[]} {
+
         const result = {errorMessage: '', jsonld: []};
         const chars = new ANTLRInputStream(str);
         const lexer = new MOSLexer(chars);
@@ -103,10 +109,14 @@ export class ManchesterConverterService {
         const parser = new MOSParser(tokens);
         parser.removeErrorListeners();
         parser.addErrorListener(new BlankNodesErrorListener(result));
+
         const blankNodes: MOSListener = new BlankNodesListener(result.jsonld, localNameMap);
         const start = usingDatatypeRange ? parser.dataRange() : parser.description();
         try {
             ParseTreeWalker.DEFAULT.walk(blankNodes, start);
+            // if (str.includes("subClassOf")) {
+            //     result.jsonld.push({ SubClassOf: str });
+            // }
         } catch (ex) {
             result.errorMessage = get(ex, 'message', ex);
             result.jsonld = undefined;
@@ -135,7 +145,7 @@ export class ManchesterConverterService {
     }
 
     private _render(id, jsonld, index, html) {
-    // private _render(id, jsonld, index, html, listKeyword = '') {
+        // private _render(id, jsonld, index, html, listKeyword = '') {
         const entity = jsonld[index[id].position];
         let result = '';
         if (this.om.isClass(entity)) {
@@ -171,6 +181,70 @@ export class ManchesterConverterService {
                 result = `{${result}}`;
             }
         }
+        return result;
+    }
+
+    gcaJsonldToManchester(id: string, jsonld: JSONLDObject[], index: {[key: string]: {position: number}}, html = false): string {
+        return this._gcaRender(id, jsonld, index, html);
+    }
+
+    private _gcaRender(id, jsonld, index, html) {
+    // private _render(id, jsonld, index, html, listKeyword = '') {
+        const entity = jsonld[index[id]?.position];
+        let result = '';
+        if (this.om.isClass(entity)) {
+            result = this._gcaRenderClass(entity, jsonld, index, html);
+        } else if (this.om.isRestriction(entity)) {
+            result = this._renderRestriction(entity, jsonld, index, html);
+        } else if (this.om.isDatatype(entity)) {
+            result = this._renderDatatype(entity, jsonld, index, html);
+        }
+        return result === '' ? id : result;
+    }
+    private _gcaRenderClass(entity, jsonld, index, html) {
+        let result = '';
+        const subClass = intersection(Object.keys(entity), Object.keys(this.subClassKeyword));
+        const prop = intersection(Object.keys(entity), Object.keys(this.expressionKeywords));
+        let gcaSubClass='';
+            if (subClass.length === 1){
+                const subClassOf = head(entity[subClass[0]]);
+                gcaSubClass = this.subClassKeyword[subClass[0]];
+                gcaSubClass = this._surround(gcaSubClass,this.restrictionClassName);
+                const isGCA = isBlankNodeId(subClassOf['@id']);
+                if (!isGCA) {
+                    const subClassLabel  = this.om.getEntityName({'@id': subClassOf['@id']});
+                    gcaSubClass += ' ' + subClassLabel;
+                } else {
+                    const genid = subClassOf['@id'];
+                    const getSubClassIRI = this._render(genid,jsonld,index,html);
+                    gcaSubClass += ' ' + getSubClassIRI;
+                }
+            }
+        if (prop.length === 1) {
+            const item = head(entity[prop[0]]);
+            let keyword = this.expressionKeywords[prop[0]];
+            if (html && prop[0] !== `${OWL}oneOf`) {
+                keyword = this._surround(keyword, this.expressionClassName);
+            }
+            if (includes([`${OWL}unionOf`, `${OWL}intersectionOf`, `${OWL}oneOf`], prop[0])) {
+                if (has(item, '@list')) {
+                    for (let i = 0; i < item['@list'].length; i++) {
+                        i === 0 ? result += this._getValue(item['@list'][i], jsonld, index, html) : result += keyword + this._getValue(item['@list'][i], jsonld, index, html);
+                    }
+                } else {
+                    result += this._renderList(item['@id'], jsonld, index, html, keyword);
+                }
+            } else {
+                result += keyword + this._getValue(item, jsonld, index, html);
+            }
+            if (prop[0] === `${OWL}oneOf`) {
+                result = `{${result}}`;
+            }
+            if (gcaSubClass){
+result += ' ' + gcaSubClass;
+}
+        }
+        console.log('RESULT MANCHESTER SYNTAX#$%%$##$%%$#',result);
         return result;
     }
     private _renderRestriction(entity, jsonld, index, html) {
@@ -259,6 +333,7 @@ export class ManchesterConverterService {
         }
     }
     private _surround(str, className): string {
+
         if (str.trim() !== '') {
             return `<span class="${className}">${str}</span>`;
         }
@@ -269,7 +344,7 @@ export class ManchesterConverterService {
         let id = startId;
         let end = false;
         while (!end) {
-            const entity = jsonld[index[id].position];
+            const entity = jsonld[index[id]?.position];
             const first = head(entity[`${RDF}first`]);
             const rest = head(entity[`${RDF}rest`]);
             result += this._getValue(first, jsonld, index, html);

@@ -125,7 +125,6 @@ import static com.mobi.security.policy.api.xacml.XACML.POLICY_PERMIT_OVERRIDES;
 public class OntologyRest {
     private Difference difference;
 
-
     private final ModelFactory modelFactory = new DynamicModelFactory();
     private final ValueFactory valueFactory = new ValidatingValueFactory();
 
@@ -167,6 +166,7 @@ public class OntologyRest {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final String GET_ENTITY_QUERY;
     private static final String GET_GENERAL_CLASS_AXIOM_QUERY;
+    private static final String GET_ALL_GENERAL_CLASS_AXIOM_QUERY;
     private static final String GET_PROPERTY_RANGES;
     private static final String GET_CLASS_PROPERTIES;
     private static final String GET_NO_DOMAIN_PROPERTIES;
@@ -177,6 +177,9 @@ public class OntologyRest {
         try {
             GET_GENERAL_CLASS_AXIOM_QUERY = IOUtils.toString(
                     OntologyRest.class.getResourceAsStream("/general-class-axioms.rq"), StandardCharsets.UTF_8
+            );
+            GET_ALL_GENERAL_CLASS_AXIOM_QUERY = IOUtils.toString(
+                    OntologyRest.class.getResourceAsStream("/all-general-class-axioms.rq"), StandardCharsets.UTF_8
             );
             GET_ENTITY_QUERY = IOUtils.toString(
                     OntologyRest.class.getResourceAsStream("/retrieve-entity.rq"), StandardCharsets.UTF_8
@@ -3497,7 +3500,6 @@ public class OntologyRest {
                                               @PathParam("entityId") String entityId,
                                               @Context HttpServletRequest servletRequest) {
         try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
-
             Ontology ontology = getOntology(servletRequest, recordId, null, null, true, conn)
                     .orElseThrow(() -> RestUtils.getErrorObjBadRequest(
                             new IllegalArgumentException("The ontology could not be found.")));
@@ -3544,14 +3546,13 @@ public class OntologyRest {
     @ResourceId(type = ValueType.PATH, value = "recordId")
     public Response getGeneralAxiom(@PathParam("recordId") String recordId, @Context HttpServletRequest servletRequest) {
         try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
-            Ontology ontology = getOntology(servletRequest, recordId, null, null, false, conn)
+            Ontology ontology = getOntology(servletRequest, recordId, null, null, true, conn)
                     .orElseThrow(() -> RestUtils.getErrorObjBadRequest(
                             new IllegalArgumentException("The ontology could not be found.")));
-            StreamingOutput output = outputStream -> {
-                ontology.asJsonLD(false, outputStream);
-            };
 
-            return Response.ok(output).build();
+            return getResponseBuilderForGraphQuery(ontology, GET_ALL_GENERAL_CLASS_AXIOM_QUERY, true, false, "jsonld")
+                    .type(MediaType.APPLICATION_JSON_TYPE)
+                    .build();
         }
     }
 

@@ -44,7 +44,6 @@ import { CATALOG, DCTERMS } from '../../prefixes';
 import { condenseCommitId, createHttpParams, getBeautifulIRI, getDctermsValue, handleError, paginatedConfigToHttpParams } from '../utility';
 import { EventTypeConstants, EventWithPayload } from '../models/eventWithPayload.interface';
 
-
 /**
  * @class shared.CatalogManagerService
  *
@@ -789,7 +788,7 @@ export class CatalogManagerService {
                 catchError(handleError), 
                 map(() => {}),
                 tap(() => {
-                    this._recordBranchDeleted(recordId, branchId, catalogId)
+                    this._recordBranchDeleted(recordId, branchId, catalogId);
                 })
             );
     }
@@ -860,7 +859,8 @@ export class CatalogManagerService {
      */
     getCompiledResource(commitId: string, entityId: string, isTracked = false): Observable<JSONLDObject[]> {
         const url = `${this.commitsPrefix}/${encodeURIComponent(commitId)}/resource`;
-        const request =  this.http.get<JSONLDObject[]>(url, {params: createHttpParams({ entityId })});
+        const request =  this.http.get<JSONLDObject[]>
+        (url, {params: createHttpParams({ entityId })});
         return this.spinnerSrv.trackedRequest(request, isTracked).pipe(catchError(handleError)).pipe(catchError(handleError));
     }
 

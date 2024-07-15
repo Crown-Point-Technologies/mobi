@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -152,6 +152,34 @@ export class OntologyManagerService {
                     .pipe(catchError(handleErrorObject));
             })
         );
+    }
+    /**
+     * Calls the GET /mobirest/{recordId}/general-class-axioms endpoint with the passed
+     * Catalog and Record ids and returns the matching Record object if it exists.
+     *
+     * @param {string} recordId The id of the Record to retrieve
+     * @returns {Observable<JSONLDObject[]>} An Observable that resolves to the array of {@link JSONLDObject}s for the
+     * Record if it exists or is rejected with an error message
+     */
+    getAllGeneralClassAxioms(recordId: string): Observable<JSONLDObject[]> {
+        return this.spinnerSrv.track(this.http.get<JSONLDObject[]>
+        (`${this.prefix}/${encodeURIComponent(recordId)}/general-class-axioms`))
+            .pipe(catchError(handleError));
+    }
+
+    /**
+     * Calls the GET /mobirest/{recordId}/general-class-axioms/{catalogId} endpoint with the passed
+     * Catalog and Record ids and returns the matching Record object if it exists.
+     *
+     * @param {string} recordId The id of the Record to retrieve
+     * @param {string} catalogId The id of the Catalog with the specified Record
+     * @returns {Observable<JSONLDObject[]>} An Observable that resolves to the array of {@link JSONLDObject}s for the
+     * Record if it exists or is rejected with an error message
+     */
+    getGeneralClassAxiom(recordId: string, entityId: string): Observable<JSONLDObject[]> {
+        return this.spinnerSrv.track(this.http.get<JSONLDObject[]>
+        (`${this.prefix}/${encodeURIComponent(recordId)}/general-class-axioms/${encodeURIComponent(entityId)}`))
+            .pipe(catchError(handleError));
     }
     /**
      * Calls the PUT /mobirest/ontologies/{recordId} endpoint which will return a new in-progress commit
@@ -1350,13 +1378,18 @@ export class OntologyManagerService {
      * @returns {string} The beautified IRI string.
      */
     getEntityName(entity: JSONLDObject): string {
-        let result = reduce(this.entityNameProps, (tempResult, prop) => tempResult 
+        //console.log("entity is "+JSON.stringify(entity));
+        let result = reduce(this.entityNameProps, (tempResult, prop) => tempResult
             || this.getPrioritizedValue(entity, prop), '');
+
+        //console.log("result in getEntityName is ",result);
         if (!result && has(entity, '@id')) {
             result = getBeautifulIRI(entity['@id']);
+        //    console.log("beautiful result is "+result);
         }
         return result;
     }
+
     private getPrioritizedValue(entity, prop) {
         return get(find(get(entity, `['${prop}']`), {'@language': 'en'}), '@value') || getPropertyValue(entity, prop);
     }

@@ -29,7 +29,7 @@ import { JSONLDObject } from '../../../shared/models/JSONLDObject.interface';
 import { ConfirmModalComponent } from '../../../shared/components/confirmModal/confirmModal.component';
 import {DCTERMS, OWL, RDF, RDFS} from '../../../prefixes';
 import {CatalogManagerService} from '../../../shared/services/catalogManager.service';
-import {PropertyManagerService} from "../../../shared/services/propertyManager.service";
+import {PropertyManagerService} from '../../../shared/services/propertyManager.service';
 
 interface PropertyChainModel {
   genId:string,

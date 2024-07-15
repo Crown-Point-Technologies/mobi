@@ -4,7 +4,7 @@
   $Id:$
   $HeadURL:$
   %%
-  Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
   %%
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -20,7 +20,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #L%
   -->
-<div class="classes-tab h-100 row m-0">
+  <div class="classes-tab h-100 row m-0">
     <class-hierarchy-block class="col-3 h-100"></class-hierarchy-block>
     <div class="selected-class col-9 h-100 pt-2" #classesTab>
         <div class="h-100 w-100 d-flex flex-column" *ngIf="os.listItem.selected">
@@ -38,6 +38,9 @@
                     </div>
                     <div class="row py-2">
                         <axiom-block class="col"></axiom-block>
+                    </div>
+                    <div class="row py-2">
+                        <general-class-axiom-block class="col" [projectTab]="no"></general-class-axiom-block>
                     </div>
                 </div>
                 <usages-block class="col-5 pt-2 vertical-scroll h-100" [usages]="os.listItem.editorTabStates.classes.usages"></usages-block>

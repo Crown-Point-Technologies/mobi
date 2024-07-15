@@ -4,7 +4,7 @@
   $Id:$
   $HeadURL:$
   %%
-  Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
   %%
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -20,7 +20,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #L%
   -->
-<div class="project-tab h-100 w-100 m-0 p-3" #projectTab>
+  <div class="project-tab h-100 w-100 m-0 p-3" #projectTab>
     <div class="d-flex flex-column h-100" *ngIf="os.listItem.selected">
         <selected-details></selected-details>
         <div class="row flex-1 remove-min-height">
@@ -30,6 +30,9 @@
                 </div>
                 <div class="row py-2">
                     <imports-block class="col" [listItem]="os.listItem"></imports-block>
+                </div>
+                <div class="row py-2">
+                    <general-class-axioms-block class="col"></general-class-axioms-block>
                 </div>
             </div>
             <preview-block class="col-7 h-100" [(activePage)]="os.listItem.editorTabStates.project"></preview-block>

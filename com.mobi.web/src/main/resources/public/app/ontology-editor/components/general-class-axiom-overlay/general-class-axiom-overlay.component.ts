@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-import {Component, Inject, OnInit} from '@angular/core';
+import {Component, Inject, Input, OnChanges, OnInit, SimpleChanges} from '@angular/core';
 import {Observable} from 'rxjs';
 import {UntypedFormControl} from '@angular/forms';
 import {OntologyStateService} from '../../../shared/services/ontologyState.service';
@@ -32,9 +32,10 @@ import {PropertyManagerService} from '../../../shared/services/propertyManager.s
 import {debounceTime, first, map, startWith} from 'rxjs/operators';
 import {cloneDeep, filter, forEach, get, groupBy, has, intersection, isArray, some, sortBy} from 'lodash';
 import {MatAutocompleteSelectedEvent} from '@angular/material/autocomplete';
-import {RDFS} from '../../../prefixes';
+import {OWL, RDFS} from '../../../prefixes';
 import {splitIRI} from '../../../shared/pipes/splitIRI.pipe';
-import { getIRILocalName, getIRINamespace } from '../../../shared/utility';
+import {getIRILocalName, getIRINamespace, getSkolemizedIRI} from '../../../shared/utility';
+import {JSONLDObject} from '../../../shared/models/JSONLDObject.interface';
 
 interface GeneralAxiomGroup {
   namespace: string,
@@ -51,15 +52,13 @@ interface GeneralAxiomOption {
   styleUrls: ['./general-class-axiom-overlay.component.scss']
 })
 export class GeneralClassAxiomOverlayComponent implements OnInit {
-
   errorMessage = '';
-  axiom: {iri: string, valuesKey: string} = undefined;
   values: string[] = [];
   filteredAxioms: Observable<GeneralAxiomGroup[]>;
   expression = '';
-  // tabIndex = 0;
   localNameMap = {};
-  // valuesSelectList: {[key: string]: string} = {};
+  action = '';
+  gcaId= '';
   editorOptions = {
     mode: 'text/omn',
     indentUnit: 4,
@@ -69,73 +68,57 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     noNewlines: true,
     localNames: {}
   };
-
-  axiomChoice = new UntypedFormControl('');
+  id='';
+  gcaOthers = false;
 
   constructor( private os: OntologyStateService, private om: OntologyManagerService,
                private dialogRef: MatDialogRef<GeneralClassAxiomOverlayComponent>, private toast: ToastService,
                private mc: ManchesterConverterService, private pm: PropertyManagerService,
-               @Inject(MAT_DIALOG_DATA) public data: {axiomList: {iri: string, valuesKey: string}[]} ) {
+               @Inject(MAT_DIALOG_DATA) public data: {generalClassAxiomList: {iri: string, valuesKey: string}[], exp: string, action: string, id:string}) {
+    this.action = data.action;
+    this.expression = data.exp === null ? this.expression : data.exp;
+    this.id = data.id;
   }
 
   ngOnInit(): void {
     this.localNameMap = this.createLocalNameMap();
     this.editorOptions.localNames = Object.keys(this.localNameMap);
+  }
 
-    this.filteredAxioms = this.axiomChoice.valueChanges.pipe(
-        debounceTime(500),
-        startWith<string|{iri: string, valuesKey: string}>(''),
-        map((value: string|{iri: string, valuesKey: string}) => {
-          const searchText = typeof value === 'string' ?
-              value :
-              value ?
-                  value.iri :
-                  '';
-          return this.filterAxioms(searchText);
-        }),
-    );
-  }
-  filterAxioms(searchText: string): GeneralAxiomGroup[] {
-    if (!this.data.axiomList) {
-      return [];
-    }
-    const filtered = this.data.axiomList
-        .filter(axiom => axiom.iri.toLowerCase()
-            .includes(searchText.toLowerCase()));
-    const grouped: {[key: string]: {iri: string, valuesKey: string}[]} =
-        groupBy(filtered, axiom => this.getIRINamespace(axiom));
-    const rtn: GeneralAxiomGroup[] = Object.keys(grouped).map(namespace => ({
-      namespace,
-      options: grouped[namespace].map(axiom => ({
-        axiom,
-        name: this.getIRILocalName(axiom)
-      }))
-    }));
-    rtn.forEach(group => {
-      group.options = sortBy(group.options, option => this.getIRILocalName(option.axiom));
-    });
-    return rtn;
-  }
-  getIRINamespace(axiom: {iri: string, valuesKey: string}): string {
-    return getIRINamespace(get(axiom, 'iri'));
-  }
-  getIRILocalName(axiom: {iri: string, valuesKey: string}): string {
-    return getIRILocalName(get(axiom, 'iri'));
-  }
-  selectAxiom(event: MatAutocompleteSelectedEvent): void {
-    const prevAxiom = this.axiom;
-    this.axiom = event.option.value;
-    this.values = [];
-    this.setValues(prevAxiom);
-    this.editorOptions.readOnly = false;
-  }
   addAxiom(): void {
-    const axiom = this.axiom.iri;
+    if (this.action === 'edit') {
+      delete this.os.listItem.blankNodes[this.id];
+      const newGCAObj = {'@id': this.id};
+      if (this.os.listItem.gcaOthers.some(obj=>
+          Object.values(obj).some (val => Object.values(newGCAObj).includes(val)))){
+        const data = this.os.listItem.gcaOthers.
+        find(g=>g['@id']===this.id);
+        const index = this.os.listItem.gcaOthers.indexOf(data);
+        this.os.listItem.gcaOthers.splice(index,1);
+      }
+      if (this.os.listItem.generalClassAxiom.some(obj=>
+          Object.values(obj).some (val => Object.values(newGCAObj).includes(val)))){
+        const data = this.os.listItem.generalClassAxiom.
+        find(g=>g['@id']===this.id);
+        const index = this.os.listItem.generalClassAxiom.indexOf(data);
+        this.os.listItem.generalClassAxiom.splice(index,1);
+      }
+      if (this.os.listItem.generalClassAxioms.some(obj=>
+          Object.values(obj).some (val => Object.values(newGCAObj).includes(val)))){
+        const data = this.os.listItem.generalClassAxioms.
+        find(g=>g['@id']===this.id);
+        const index = this.os.listItem.generalClassAxioms.indexOf(data);
+        this.os.listItem.generalClassAxioms.splice(index,1);
+      }
+      const deleteGCAsObj =
+          this.findRelatedObjects(this.os.listItem.selectedBlankNodes, this.id);
+      for ( const obj of deleteGCAsObj) {
+        this.os.addToDeletions(this.os.listItem.versionedRdfRecord.recordId, obj);
+        // this.os.listItem.selectedBlankNodes[obj];
+      }
+    }
     let values;
-    // Collect values depending on current tab
-    // if (this.tabIndex === 1) {
-      const usingDatatypeRange: boolean = (axiom === `${RDFS}range` && this.om.isDataTypeProperty(this.os.listItem.selected));
-      const result = this.mc.manchesterToJsonld(this.expression, this.localNameMap, usingDatatypeRange);
+    const result = this.mc.manchesterToJsonld(this.expression, this.localNameMap, false);
       if (result.errorMessage) {
         this.errorMessage = result.errorMessage;
         return;
@@ -143,57 +126,210 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
         this.errorMessage = 'Expression resulted in no values. Please try again.';
         return;
       } else {
+
+        const gcaIRI = this.extractAfterSubClassOf();
+        const keyword:boolean = this.hasMoreThanOneIRI(gcaIRI);
+        if (keyword){
+        this.gcaId = getSkolemizedIRI();
+        const res = this.getGCAPayload(this.gcaId, gcaIRI);
+          result.jsonld.push(res);
+        this.gcaOthers = true;
+        }
         const bnodeId = result.jsonld[0]['@id'];
-        values = [bnodeId];
+        const modifyFirstObj = this.insertSubClassOf(result.jsonld[0]);
+        result.jsonld[0] = modifyFirstObj;
+        values = bnodeId;
         forEach(result.jsonld, obj => {
           this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, obj);
           this.os.addEntity(obj);
           this.os.listItem.selectedBlankNodes.push(obj);
         });
-        const bnodeIndex = this.os.getBnodeIndex(this.os.listItem.selectedBlankNodes);
-        this.os.listItem.blankNodes[bnodeId] = this.mc.jsonldToManchester(bnodeId, this.os.listItem.selectedBlankNodes, bnodeIndex, true);
+        const bnodeIndex =
+            this.os.getBnodeIndex(this.os.listItem.selectedBlankNodes);
+        const gcaResponse =  this.mc.gcaJsonldToManchester(bnodeId, this.os.listItem.selectedBlankNodes, bnodeIndex, true);
+          this.os.listItem.blankNodes[bnodeId] = gcaResponse;
       }
-    // }
-    // else if (this.tabIndex === 0) {
-    //   values = this.values;
-    // }
-    const addedValues = filter(values, value => this.pm.addId(this.os.listItem.selected, axiom, value));
-    if (addedValues?.length !== values?.length) {
-      this.toast.createWarningToast('Duplicate property values not allowed');
-    }
-    if (addedValues.length) {
-      if (axiom === `${RDFS}range`) {
-        this.os.updatePropertyIcon(this.os.listItem.selected);
+      const valueObjs:JSONLDObject = {'@id': values};
+      if (!this.os.listItem.generalClassAxiom.some(obj=>
+          Object.values(obj).some(val => Object.values(valueObjs).includes(val)))) {
+        this.os.listItem.generalClassAxioms.push(valueObjs);
+        if (!this.gcaOthers){
+          this.os.listItem.generalClassAxiom.push(valueObjs);
+        }
+        this.os.listItem.gcaOthers?.push(valueObjs);
+        this.gcaOthers = false;
+      } else {
+        this.toast.createWarningToast('Duplicate property values not allowed');
       }
-      const valueObjs = addedValues.map(value => ({'@id': value}));
-      this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, {'@id': this.os.listItem.selected['@id'], [axiom]: valueObjs});
       this.os.saveCurrentChanges().pipe(first())
           .subscribe(() => {
-            this.os.listItem.selected = cloneDeep(this.os.listItem.selected); // Needed to trigger component input watchers
-            let returnValues = [];
-            // if (this.tabIndex === 0) {
-              returnValues = intersection(values, addedValues);
-            // }
-            this.dialogRef.close({axiom: axiom, values: returnValues});
+            this.dialogRef.close({gca: 'gca', values: values});
           });
-    }
   }
-  setValues(prevAxiom: {iri: string, valuesKey: string}): void {
-    const valuesKey = get(this.axiom, 'valuesKey');
-    // if (!valuesKey) {
-    //   this.valuesSelectList = {};
-    //   return;
+
+  findRelatedObjects(selectedBlankNode:  JSONLDObject[], genid: string):  JSONLDObject[] {
+    const result: JSONLDObject[]  = [];
+
+    const lookup: { [id: string]:  JSONLDObject } = {};
+    selectedBlankNode.forEach(node => {
+      lookup[node['@id']] = node;
+    });
+
+    const findRelated = (nodeId: string)=> {
+      if (lookup[nodeId] && !result.includes(lookup[nodeId])) {
+        result.push(lookup[nodeId]);
+        const node = lookup[nodeId];
+        for (const key in node) {
+          if (key.startsWith('http://') && Array.isArray(node[key])) {
+            node[key].forEach((item: any) => {
+              if (item['@id']) {
+                findRelated(item['@id']);
+              }
+            });
+          }
+        }
+      }
+    };
+
+    findRelated(genid);
+
+    return result;
+  }
+  extractAfterSubClassOf(){
+    let result = '';
+    const keyword = 'SubClassOf';
+    const index = this.expression.indexOf(keyword);
+
+    if (index !== -1){
+      result = this.expression.substring(index + keyword.length).trim();
+    }
+    return result;
+  }
+
+  hasMoreThanOneIRI(iri:string):boolean{
+    const words = iri.trim().split(/\s+/);
+    return words.length > 1;
+  }
+    getEntityName(entity: string): string {
+      return `https://spec.industrialontologies.org/ontology/core/Core/${entity}`;
+    }
+
+  getGCAPayload(id:string, str:string){
+    const OWL = 'http://www.w3.org/2002/07/owl#';
+    const expressionKeywords = {
+      [`${OWL}unionOf`]: ' or ', // A or B
+      [`${OWL}intersectionOf`]: ' and ', // A and B
+      [`${OWL}complementOf`]: 'not ', // not A
+      [`${OWL}oneOf`]: ', ', // {a1 a2 ... an}.
+    };
+      let keyword = '';
+      let entities = [];
+
+      const [firstEntity, operator, secondEntity] = str.split(/(and | or |not |, )/).map(part => part.trim());
+      if (!firstEntity || !secondEntity || !operator){
+        throw new Error('Invalid subClass IRI');
+      }
+
+      entities = [this.getEntityName(firstEntity), this.getEntityName(secondEntity)];
+      keyword = Object.keys(expressionKeywords).find(key => expressionKeywords[key].trim() === operator);
+
+      // for (const [key, value] of Object.entries(expressionKeywords)) {
+      //   if (str.includes(value.trim())) {
+      //     keyword = key;
+      //     entities = str.split(value.trim()).map(this.getEntityName);
+      //     break;
+      //   }
+      // }
+
+      if (!keyword) {
+        throw new Error(`No matching keyword found for input string: ${str}`);
+      }
+
+      return {
+        '@id': id,
+        '@type': [
+          `${OWL}Class`
+        ],
+        [keyword]: [
+          {
+            '@list': entities.map(entity => ({
+              '@id': entity
+            }))
+          }
+        ]
+      };
+    }
+
+  insertSubClassOf(jsonObj){
+    let subClass = '';
+    if (this.gcaId){
+      subClass = this.gcaId;
+    } else {
+      subClass = this.os.listItem.selected['@id'];
+    }
+    // const isProject = localStorage.getItem("projectTab");
+    // if(isProject == "yes") {
+    //   localStorage.removeItem("projectTab");
+    //   subClass = this.expression.split("SubClassOf ")[1];
+    //   if(subClass.startsWith("(") && subClass.endsWith(")")) {
+    //     const data = subClass.substring(1, subClass.length - 1).split(" or ");
+    //     subClass = "";
+    //     data.forEach(d=> {
+    //       subClass += "https://spec.industrialontologies.org/ontology/core/Core/"+d+" or ";
+    //     });
+    //     subClass = subClass.substring(0, subClass.lastIndexOf(" or "));
+    //   } else {
+    //     subClass = "https://spec.industrialontologies.org/ontology/core/Core/"+subClass;
+    //   }
+    //   /*if(subClass) {
+    //     const data = subClass.split(" ");
+    //     data.forEach(d=> {
+    //       subClass = "https://spec.industrialontologies.org/ontology/core/Core/"+d+" ";
+    //     });
+    //   }*/
     // }
-    if (prevAxiom && prevAxiom.valuesKey === valuesKey) {
-      return;
+    if ((subClass !== this.os.listItem.ontologyId ) && !jsonObj[`${RDFS}subClassOf`]){
+      const subClassOf = {
+        'http://www.w3.org/2000/01/rdf-schema#subClassOf': [
+          {
+            '@id': subClass
+          }
+        ]
+      };
+
+      // Convert the JSON object to an array of key-value pairs
+      const entries = Object.entries(jsonObj);
+
+      //Find the index of the "@type" key
+      const typeIndex = entries.findIndex(entry => entry[0] === '@type');
+
+      //Insert the subClassOf section after the "@type" key
+      entries.splice(typeIndex + 1, 0, ...Object.entries(subClassOf));
+
+      // Convert the entries back to a JSON object
+      const newObj = {};
+      for (const [key,value] of entries){
+        newObj[key] = value;
+      }
+      return newObj;
     }
-    const array = Object.keys(has(this.os.listItem[valuesKey], 'iris') ? this.os.listItem[valuesKey].iris : this.os.listItem[valuesKey]);
-    const filtered = this.removeIriFromArray(array, this.os.listItem.selected['@id']);
-    // this.valuesSelectList = {};
-    // filtered.forEach(iri => {
-    //   this.valuesSelectList[iri] = getIRINamespace(iri);
-    // });
+    console.log('TESSST jsonObj',jsonObj);
+    return jsonObj;
   }
+
+  // processSubClass(genId:string,result:string,):string {
+  //   let resultStr = result.trim();
+  //   let sc;
+  //   for (const obj of this.os.listItem.selectedBlankNodes) {
+  //     if (obj['@id'] && obj['@id'] === genId) {
+  //       sc =  obj['http://www.w3.org/2000/01/rdf-schema#subClassOf'][0];
+  //     }
+  //   }
+  //   const subClass = this.om.getEntityName({'@id':sc['@id']});
+  //   resultStr += ` subClassOf ${subClass}`;
+  //   return resultStr;
+  // }
+
   removeIriFromArray(array: string [], removalIRI: string): string[] {
     let result = [''];
 

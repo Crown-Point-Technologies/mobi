@@ -20,65 +20,70 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #L%
   -->
-<div class="axiom-block">
+  <div class="axiom-block">
     <div class="section-header">
         <h5>General Class Axioms</h5>
         <a *ngIf="os.listItem.selected && !os.isSelectedImported() && os.canModify()"
            class="float-right fa fa-fw fa-plus" (click)="this.showAxiomOverlay()"></a>
     </div>
+    <div class="class-axioms">
+        <div class="property-values mt-3">
+            <div class="prop-header d-flex align-items-baseline clearfix sufficient-conditions-others">
+                <p class="text text-truncate m-0">Sufficient Condition
+                </p>
+            </div>
+          <div *ngFor="let value of values; let i =  index" class="prop-value-container d-flex p-1 ml-3 mt-1">
+            <blank-node-value-display [node]="value">
+            </blank-node-value-display>
+            <div class="button-container d-flex">
+                <!--                *ngIf="isRemoveSet && !os.isImported(entity['@id']) && os.canModify()" "-->
+                <button  mat-icon-button color="primary" (click)="openRemoveGCAOverlay(value,i)" title="Delete">
+                    <mat-icon>delete</mat-icon>
+                </button>
+                <button  mat-icon-button color="primary" (click)="openEditGCAOverlay(value,i)" title="Delete">
+                    <mat-icon>edit</mat-icon>
+                </button>
+            </div>
 
-    <div class="property-values mt-3">
-        <div class="prop-header d-flex align-items-baseline clearfix">
-            <p class="text text-truncate m-0" title="{{generalClassAxiomList.iri}}">
-                {{os.getEntityNameByListItem(generalClassAxiomList.iri, os.listItem)}}</p>
-            <small class="ml-1 text-muted text-truncate flex-1">&lt;{{generalClassAxiomList.iri}}&gt;</small>
         </div>
-<!--        {{os.getEntityNameByListItem(generalClassAxiomList.iri)}} {{"CHECK"}} {{generalClassAxiomList.iri}}-->
-        <div class="prop-value-container d-flex flex-column p-1 ml-3 mt-1" *ngFor="let value of generalClassAxioms;">
-           <div>
-                <span class="value-display-wrapper flex-1 remove-min-width">
-                    {{os.getEntityNameByListItem(selected)}}
-                    <small>&lt;<a (click)="os.goTo(generalClassAxiomList.iri)">{{selected}}</a>&gt;
-                    </small>
-            </span>
-           </div>
-                <div>
-                    <span class="value-display-wrapper flex-1 remove-min-width">
-            <span>{{value}}</span>
-                </span>
+        </div>
+
+        <div class="property-values mt-3">
+            <div class="prop-header d-flex align-items-baseline clearfix sufficient-conditions-others">
+                <p class="text text-truncate m-0">Others
+                </p>
+            </div>
+            <div *ngFor="let value of others; let i =  index" class="prop-value-container d-flex p-1 ml-3 mt-1">
+                <blank-node-value-display [node]="value">
+                </blank-node-value-display>
+                <div class="button-container d-flex">
+                    <button  mat-icon-button color="primary" (click)="openRemoveGCAOverlay(value,i)" title="Delete">
+                        <mat-icon>delete</mat-icon>
+                    </button>
+                    <button  mat-icon-button color="primary" (click)="openEditGCAOverlay(value,i)" title="Edit">
+                        <mat-icon>edit</mat-icon>
+                    </button>
                 </div>
-
-
-<!--        <div class="prop-value-container d-flex p-1 ml-3 mt-1" *ngFor="let value of entity[property]; index as $index">-->
-<!--            <span *ngIf="os.isLinkable(value['@id'])" class="value-display-wrapper flex-1 remove-min-width">
-                    {{os.getEntityNameByListItem(value['@id'])}}
-                    <small>&lt;<a (click)="os.goTo(value['@id'])">{{value['@id']}}</a>&gt;
-                    </small></span>-->
-<!--            <ng-template #notLinkable><span class="value-display-wrapper flex-1 remove-min-width">-->
-<!--            <blank-node-value-display *ngIf="isBlankNodeId(value['@id']);
-                    else notBlankNode" [node]="value">
-                    </blank-node-value-display>-->
-<!--            <ng-template #notBlankNode>-->
-<!--                <value-display *ngIf="isHighlightedProp; else noHighlight" [value]="value" [highlightText]="highlightText"></value-display>-->
-<!--                <ng-template #noHighlight><value-display [value]="value"></value-display></ng-template>-->
-<!--            </ng-template>-->
-<!--        </span></ng-template>-->
-
-<!--            For button-->
-<!--            *ngIf="isRemoveSet && !os.isImported(entity['@id']) && os.canModify() (click)="callRemove($index)""-->
-<!--            <div class="button-container">-->
-<!--                <button mat-icon-button color="primary"  title="Delete"><mat-icon>delete</mat-icon></button>-->
+            </div>
+<!--            <br>-->
+<!--            <h1>Ends</h1>-->
+<!--            <br>-->
+<!--            <div *ngFor="let value of allGca; let i = index" class="prop-value-container d-flex p-1 ml-3 mt-1">-->
+<!--                <div [innerHTML]="value"></div>-->
+<!--                <div class="button-container d-flex">-->
+<!--                    &lt;!&ndash;                *ngIf="isRemoveSet && !os.isImported(entity['@id']) && os.canModify()" "&ndash;&gt;-->
+<!--                    <button  mat-icon-button color="primary" (click)="openRemoveGCAOverlay(value['@id'],i)" title="Delete">-->
+<!--                        <mat-icon>delete</mat-icon>-->
+<!--                    </button>-->
+<!--                    <button  mat-icon-button color="primary" (click)="openEditGCAOverlay(value,i)" title="Edit">-->
+<!--                        <mat-icon>edit</mat-icon>-->
+<!--                    </button>-->
+<!--                </div>-->
+<!--                <br>-->
 <!--            </div>-->
+
         </div>
+
     </div>
-<!--    <div class="class-axioms">-->
-<!--        <property-values *ngFor="let axiom of generalClassAxioms"-->
-<!--                         [property]="axiom"-->
-<!--                         [entity]="os.listItem.selected"-->
-<!--                         (remove)="openRemoveOverlay($event)">-->
-<!--        </property-values>-->
-<!--    </div>-->
-<!--    <class-axioms [selected]="os.listItem.selected"></class-axioms>-->
-<!--    <object-property-axioms *ngIf="om.isObjectProperty(os.listItem.selected)" [selected]="os.listItem.selected"></object-property-axioms>-->
-<!--    <datatype-property-axioms *ngIf="om.isDataTypeProperty(os.listItem.selected)" [selected]="os.listItem.selected"></datatype-property-axioms>-->
+
 </div>

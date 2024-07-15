@@ -20,38 +20,23 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #L%
   -->
-<h1 mat-dialog-title>Add General Class Axiom</h1>
-<div mat-dialog-content>
-    <error-display *ngIf="errorMessage">{{errorMessage}}</error-display>
-<!--    <mat-form-field class="w-100">-->
-<!--        <mat-label>General Axiom</mat-label>-->
-<!--        <input type="text" matInput placeholder="Select an axiom" [formControl]="axiomChoice" [matAutocomplete]="axiomAuto">-->
-<!--        <mat-autocomplete #axiomAuto="matAutocomplete" (optionSelected)="selectAxiom($event)" [displayWith]="getIRILocalName.bind(this)">-->
-<!--            <mat-optgroup *ngFor="let group of filteredAxioms | async" [label]="group.namespace">-->
-<!--                <mat-option *ngFor="let option of group.options" [value]="option.axiom" [title]="option.axiom.iri">-->
-<!--                    {{option.name}}-->
-<!--                </mat-option>-->
-<!--            </mat-optgroup>-->
-<!--        </mat-autocomplete>-->
-<!--    </mat-form-field>-->
-    <mat-tab-group dynamicHeight="true" class="h-100">
-<!--        <mat-tab label="List" >-->
-<!--            <ng-template matTabContent>-->
-<!--                <iri-select-ontology ></iri-select-ontology>-->
-<!--            </ng-template>-->
-<!--        </mat-tab>-->
-        <mat-tab label="Editor" >
-            <ng-template matTabContent>
-                <div class="field-label">Expression</div>
-                <div class="codemirror-wrapper" [ngClass]="{'readOnly': editorOptions.readOnly}">
-                    <ngx-codemirror [(ngModel)]="expression" [options]="editorOptions"></ngx-codemirror>
-                </div>
-            </ng-template>
-        </mat-tab>
-    </mat-tab-group>
-</div>
-<div mat-dialog-actions>
-    <button mat-raised-button [mat-dialog-close]="false">Cancel</button>
-    <button mat-raised-button color="primary" (click)="addAxiom()"
-            [disabled]="(!expression)">Submit</button>
-</div>
+  <h1 mat-dialog-title>Add General Class Axiom</h1>
+  <div mat-dialog-content>
+      <error-display *ngIf="errorMessage">{{errorMessage}}</error-display>
+      <mat-tab-group dynamicHeight="true" class="h-100">
+          <mat-tab label="Editor" >
+              <ng-template matTabContent>
+                  <div class="field-label">Expression</div>
+                  <div class="codemirror-wrapper" [ngClass]="{'readOnly': editorOptions.readOnly}">
+                      <ngx-codemirror [(ngModel)]="expression" [options]="editorOptions"></ngx-codemirror>
+                  </div>
+              </ng-template>
+          </mat-tab>
+      </mat-tab-group>
+  </div>
+  <div mat-dialog-actions>
+      <button mat-raised-button [mat-dialog-close]="false">Cancel</button>
+      <button mat-raised-button color="primary" (click)="addAxiom()"
+              [disabled]="(!expression)">Submit</button>
+  </div>
+  

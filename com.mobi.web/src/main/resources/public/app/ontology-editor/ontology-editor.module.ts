@@ -111,6 +111,9 @@ import { FindViewComponent } from './components/find-view/find-view.component';
 import { QueryViewComponent } from './components/query-view/query-view.component';
 import { PropertyChainBlockComponent } from './components/property-chain-block/property-chain-block.component';
 import { PropertyChainOverlayComponent } from './components/property-chain-overlay/property-chain-overlay.component';
+import { GeneralClassAxiomsBlockComponent } from './components/general-class-axioms-block/general-class-axioms-block.component';
+import { GeneralClassAxiomBlockComponent } from './components/general-class-axiom-block/general-class-axiom-block.component';
+import { GeneralClassAxiomOverlayComponent } from './components/general-class-axiom-overlay/general-class-axiom-overlay.component';
 
 /**
  * @namespace ontology-editor
@@ -209,6 +212,9 @@ import { PropertyChainOverlayComponent } from './components/property-chain-overl
         QueryViewComponent,
         PropertyChainBlockComponent,
         PropertyChainOverlayComponent,
+        GeneralClassAxiomBlockComponent,
+        GeneralClassAxiomOverlayComponent,
+        GeneralClassAxiomsBlockComponent,
     ]
 })
 export class OntologyEditorModule {}

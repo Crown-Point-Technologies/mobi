@@ -108,6 +108,7 @@ import { getBeautifulIRI, getIRINamespace, getPropertyId, isBlankNodeId, merging
 import { SPARQLSelectBinding } from '../models/sparqlSelectResults.interface';
 import { MergeRequestManagerService } from './mergeRequestManager.service';
 import { EventPayload, EventTypeConstants, EventWithPayload } from '../models/eventWithPayload.interface';
+import {ChangesItem} from '../../ontology-editor/components/savedChangesTab/savedChangesTab.component';
 
 /**
  * @class shared.OntologyStateService
@@ -119,7 +120,7 @@ import { EventPayload, EventTypeConstants, EventWithPayload } from '../models/ev
 export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
     catalogId = '';
     type = ONTOLOGYEDITOR + 'OntologyRecord';
-  
+    isPreserve = true;
     private _updateRefsExclude = [
         'element',
         'usagesElement',
@@ -177,7 +178,9 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
                     const payload = event?.payload;
                     if (eventType && payload){
                         const ob = this._handleEventWithPayload(eventType, payload);
-                        if (ob) return ob;
+                        if (ob) {
+return ob;
+}
                         return of(false);
                     } else {
                         toast.createErrorToast('Event type and payload is required');
@@ -299,6 +302,26 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
             return entry.entityIRI;
         }
     }
+
+    /**
+     * Get the Subclass
+     */
+    // processSubClass(genId:string,result:string,):string {
+    //     let resultStr = result.trim();
+    //     let sc = '';
+    //     for (const obj of this.os.listItem.selectedBlankNodes) {
+    //         if (obj['@id'] && obj['@id'] === genId) {
+    //             console.log("obj['http://www.w3.org/2000/01/rdf-schema#subClassOf']",
+    //                 obj['http://www.w3.org/2000/01/rdf-schema#subClassOf'][0]);
+    //             sc =  obj['http://www.w3.org/2000/01/rdf-schema#subClassOf'][0];
+    //         }
+    //     }
+    //     const subClass = this.om.getEntityName({"@id": sc});
+    //     resultStr += `SubClassOf ${subClass}`;
+    //     console.log("resultSTR subClass",subClass);
+    //     console.log("RESULTSTR",resultStr);
+    //     return resultStr;
+    // }
 
 /**
      * Adds the error message to the list item with the identified id.
@@ -908,7 +931,11 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
      * @returns {Observable<null>} An Observable with the ontology ID.
      */
     saveChanges(recordId: string, differenceObj: Difference): Observable<void> {
-        return this.cm.updateInProgressCommit(recordId, this.catalogId, differenceObj,false);
+        if (this.isPreserve) {
+            return this.cm.updateInProgressCommit(recordId, this.catalogId, differenceObj, true);
+        } else {
+            return this.cm.updateInProgressCommit(recordId, this.catalogId, differenceObj, false);
+        }
     }
     /**
      * 
@@ -2201,7 +2228,7 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
      * **/
     deletePropertyChainAxiom(){
         const genIds = this.extractGenids(this.listItem.selected);
-        for(let i=0; i<genIds.length;i++){
+        for (let i=0; i<genIds.length;i++){
             const deleteDataFromInProgress = this.extractRemovePropertyChainValues(this.listItem.inProgressCommit.additions,genIds[i]);
             this.addToDeletions(this.listItem.versionedRdfRecord.recordId, {
                 '@id': this.listItem.selected['@id'],'@type': [`${OWL}propertyChainAxiom`],
@@ -2294,6 +2321,24 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
                 }
             });
         }
+    }
+    /**
+     *Get the general class axiom
+     *
+     * @return {Observable<JSONLDObject[]>}
+     **/
+    getGeneralClassAxioms(listItem: OntologyListItem = this.listItem){
+        return this.om.getAllGeneralClassAxioms(listItem.versionedRdfRecord.recordId);
+    }
+
+    /**
+     *Get the general class axiom
+     *
+     * @return {Observable<JSONLDObject[]>}
+     **/
+    getSelectedGeneralClassAxiom(listItem: OntologyListItem = this.listItem){
+        console.log('entityId',listItem.selected['@id']);
+        return this.om.getGeneralClassAxiom(listItem.versionedRdfRecord.recordId,listItem.selected['@id']);
     }
     /**
      * Saves the additions and deletions on the current `listItem` to the current user's InProgressCommit
@@ -2738,6 +2783,27 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
             listItem[prop].push(filteredJson);
         }
     }
+
+    private _addDelToInProgress(recordId: string, addJson: JSONLDObject, addProp: string, delJson: JSONLDObject, delProp: string): void {
+        const addListItem = this.getListItemByRecordId(recordId);
+        const addEntity = find(addListItem[addProp], {'@id': addJson['@id']});
+        const addFilteredJson = cloneDeep(addJson);
+        if (addEntity) {
+            mergeWith(addEntity, addFilteredJson, mergingArrays);
+        } else  {
+            addListItem[addProp].push(addFilteredJson);
+        }
+
+        const delListItem = this.getListItemByRecordId(recordId);
+        const delEntity = find(delListItem[delProp], {'@id': delJson['@id']});
+        const delFilteredJson = cloneDeep(delJson);
+        if (delEntity) {
+            mergeWith(delEntity, delFilteredJson, mergingArrays);
+        } else  {
+            delListItem[delProp].push(delFilteredJson);
+        }
+    }
+
     private _addImportedOntologyToListItem(listItem: OntologyListItem, importedOntObj: {id: string, ontologyId: string}): void {
         const importedOntologyListItem = {
             id: importedOntObj.id,

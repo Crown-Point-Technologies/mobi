@@ -30,7 +30,7 @@ import {ToastService} from '../../../shared/services/toast.service';
 import {JSONLDObject} from '../../../shared/models/JSONLDObject.interface';
 import {PropertyManagerService} from '../../../shared/services/propertyManager.service';
 import {cloneDeep, filter, intersection} from 'lodash';
-import {first} from "rxjs/operators";
+import {first} from 'rxjs/operators';
 
 @Component({
   selector: 'app-property-chain-overlay',
