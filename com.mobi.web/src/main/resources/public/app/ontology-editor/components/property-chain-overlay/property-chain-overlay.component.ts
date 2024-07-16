@@ -125,6 +125,7 @@ export class PropertyChainOverlayComponent implements OnInit {
       [propertyName]: [{'@list': valueObjs}]
     };
     this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, json);
+    this.os.isPreserve = false;
     this.os.saveCurrentChanges().subscribe();
     this.dialogRef.close(newData);
   }
@@ -167,7 +168,9 @@ export class PropertyChainOverlayComponent implements OnInit {
         '@id': this.os.listItem.selected['@id'],
         [`${OWL}propertyChainAxiom`]: [{'@list': valueObjs}]
       });
+      this.os.isPreserve = false;
       this.os.saveCurrentChanges().subscribe();
+      this.os.isPreserve = true;
       this.toast.createSuccessToast('Property Chain updated successfully');
       this.dialogRef.close(this.editData);
   }

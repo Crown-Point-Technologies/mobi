@@ -232,7 +232,9 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
               '@id': this.os.listItem.selected['@id'],'@type': [`${OWL}propertyChainAxiom`],
               [`${OWL}propertyChainAxiom`]: deletionObj
             });
+            this.os.isPreserve = false;
             this.os.saveCurrentChanges().subscribe();
+            this.os.isPreserve = true;
           }
         });
   }
