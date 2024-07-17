@@ -76,6 +76,8 @@ export class GeneralClassAxiomsBlockComponent implements OnInit {
   }
 
   updateGCA(){
+    console.log("this.os.listItem.generalClassAxioms",this.os.listItem.generalClassAxioms);
+
     const bnodeIndex = this.os.getBnodeIndex(this.generalClassAxiomsData);
     console.log("index GCA*&*&*&*&*&*&*&*",bnodeIndex);
 
@@ -86,10 +88,25 @@ export class GeneralClassAxiomsBlockComponent implements OnInit {
       const newGCAObj = {'@id': bnodeId};
       if(!this.os.listItem.generalClassAxioms.some(obj=>
           Object.values(obj).some (val => Object.values(newGCAObj).includes(val)))) {
+            const data = this.os.listItem.generalClassAxioms.
+        find(g=>g['@id']===bnodeId);
+
+        if(!data) {
         this.os.listItem.generalClassAxioms.push(newGCAObj);
+        }
       }
+      // const newGCAObj = {'@id': this.id};
+      // if (this.os.listItem.gcaOthers.some(obj=>
+      //     Object.values(obj).some (val => Object.values(newGCAObj).includes(val)))){
+      //   const data = this.os.listItem.gcaOthers.
+      //   find(g=>g['@id']===this.id);
+      //   const index = this.os.listItem.gcaOthers.indexOf(data);
+      //   this.os.listItem.gcaOthers.splice(index,1);
+      // }
 
       this.values = this.os.listItem.generalClassAxioms;
+      console.log("this.os.listItem.generalClassAxioms22222",this.os.listItem.generalClassAxioms);
+
       const gcaResponse = this.mc.gcaJsonldToManchester(bnodeId, this.generalClassAxiomsData, bnodeIndex, true);
 
   //    console.log("Menches GCAs",gcaResponse);

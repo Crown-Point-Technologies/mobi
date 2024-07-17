@@ -37,14 +37,14 @@ import {JSONLDId} from '../../../shared/models/JSONLDId.interface';
 import {ToastService} from '../../../shared/services/toast.service';
 import {Subscription} from 'rxjs';
 import {OntologyListItem} from '../../../shared/models/ontologyListItem.class';
-import { Console } from 'console';
+import { Console, debug } from 'console';
 
 @Component({
   selector: 'general-class-axiom-block',
   templateUrl: './general-class-axiom-block.component.html',
   styleUrls: ['./general-class-axiom-block.component.scss']
 })
-export class GeneralClassAxiomBlockComponent implements OnInit, OnDestroy, OnChanges {
+export class GeneralClassAxiomBlockComponent implements OnInit, OnDestroy {
   private subscriptions = new Subscription();
   generalClassAxioms:string[] = [];
   gcaData:JSONLDObject[];
@@ -72,17 +72,13 @@ if (!this.gcaData && this.os.listItem.selected['@id']) {
 }
   }
 
-  ngOnChanges() {
-    this.values = this.os.listItem.generalClassAxiom;
-    this.others = this.os.listItem.gcaOthers;
-  }
-
   updateGCA(){
     const bnodeIndex = this.os.getBnodeIndex(this.gcaData);
 
     const bnodeIds = this.getIdsWithSubClassOfProperty(this.gcaData);
 //    console.log("bnodeIds",bnodeIds);
-
+    let gcaOthersIRI;
+    let isGCAS;
     bnodeIds.forEach(bnodeId => {
 //      console.log("BNODEID************==>>",bnodeId);
       const newGCAObj = {'@id': bnodeId};
@@ -93,18 +89,41 @@ if (!this.gcaData && this.os.listItem.selected['@id']) {
 
       const gcaResponse = this.mc.gcaJsonldToManchester(bnodeId, this.gcaData, bnodeIndex, true);
       // this.allGca.push(gcaResponse);
-      const isGCAS = this.hasIRISAfterSubClassOf(gcaResponse);
+      isGCAS = this.hasIRISAfterSubClassOf(gcaResponse);
+      if (!this.os.listItem.generalClassAxioms.some(obj=>
+        Object.values(obj).some (val => Object.values(newGCAObj).includes(val)))) {
+          const data = this.os.listItem.generalClassAxioms.
+      find(g=>g['@id']===bnodeId);
+      if(!data) {
+      this.os.listItem.generalClassAxioms.push(newGCAObj);
+      }
+    }
+      console.log("TEST   AXIOMS&*^&*",this.os.listItem.generalClassAxioms);
       if (isGCAS){
         if (!this.os.listItem.gcaOthers.some(obj=>
           Object.values(obj).some (val => Object.values(newGCAObj).includes(val)))) {
-          this.os.listItem.gcaOthers.push(newGCAObj);
-          this.os.listItem.generalClassAxioms.push(newGCAObj);
+            const data = this.os.listItem.gcaOthers.
+        find(g=>g['@id']===bnodeId);
+
+        if(!data) {
+        this.os.listItem.gcaOthers.push(newGCAObj);
+        // this.os.listItem.generalClassAxioms.push(newGCAObj);
+        }
+          // this.os.listItem.gcaOthers.push(newGCAObj);
+          // this.os.listItem.generalClassAxioms.push(newGCAObj);
         }
       } else {
         if (!this.os.listItem.generalClassAxiom.some(obj=>
             Object.values(obj).some (val => Object.values(newGCAObj).includes(val)))) {
-          this.os.listItem.generalClassAxiom.push(newGCAObj);
-          this.os.listItem.generalClassAxioms.push(newGCAObj);
+              const data = this.os.listItem.generalClassAxiom.
+              find(g=>g['@id']===bnodeId);
+      
+              if(!data) {
+              this.os.listItem.generalClassAxiom.push(newGCAObj);
+              // this.os.listItem.generalClassAxioms.push(newGCAObj);
+              }
+          // this.os.listItem.generalClassAxiom.push(newGCAObj);
+          // this.os.listItem.generalClassAxioms.push(newGCAObj);
         }
         // if(this.os.listItem.gcaMap.has("sufficient")) {
         //   this.os.listItem.gcaMap.get("sufficient").set(bnodeId, gcaResponse);
@@ -115,10 +134,54 @@ if (!this.gcaData && this.os.listItem.selected['@id']) {
         // }
       }
       this.os.listItem.blankNodes[bnodeId] = gcaResponse;
-      this.values = this.os.listItem.generalClassAxiom;
-      this.others = this.os.listItem.gcaOthers;
+      // this.values = this.os.listItem.generalClassAxiom;
+      // this.others = this.os.listItem.gcaOthers;
     });
+    if(this.os.listItem.selected && this.os.listItem.selected['@id']){
+    const selectedIRI = this.os.getEntityNameByListItem(this.os.listItem.selected['@id']);
+    const iri =  selectedIRI.charAt(0).toUpperCase() + selectedIRI.slice(1);
+    gcaOthersIRI = this.getUniqueIds(iri, this.os.listItem.blankNodes);
+    if(isGCAS){
+      this.others = this.findIntersection(this.os.listItem.gcaOthers,gcaOthersIRI);
+    } else {
+      this.values = this.findIntersection(this.os.listItem.generalClassAxiom,gcaOthersIRI);
+    }
+
+    }
+
   }
+
+  findIntersection(arr1: {[key: string]: string}[], arr2: {[key: string]: string}[]): {[key: string]: string}[] {
+    const idSet = new Set<string>();
+    arr2.forEach(obj => idSet.add(obj['@id']));
+
+    const intersection = arr1.filter(obj => idSet.has(obj['@id']));
+
+    return intersection;
+}
+
+
+getUniqueIds(IRI: string, bnode: {[key: string]: string}): { '@id': string }[] {
+    const idMap = new Map<string, string>();
+
+    for (const key in bnode) {
+        const value = bnode[key];
+        const gcasc = value?.split('SubClassOf')[1];
+        const subclassOfIndex = value?.indexOf('SubClassOf');
+        const iriIndex = gcasc?.indexOf(IRI);
+
+        if (subclassOfIndex !== -1 && iriIndex !== -1) {
+            const idSuffix = key.substring(key.lastIndexOf('-') + 1);
+            if (!idMap.has(idSuffix)) {
+                idMap.set(idSuffix, key);
+            }
+        }
+    }
+
+    return Array.from(idMap.values()).map(id => ({ '@id': id }));
+}
+
+
 
   hasIRISAfterSubClassOf(inputStr: string): boolean {
     const pattern = /SubClassOf\s*(.*?)<span/;
@@ -207,6 +270,7 @@ if (!this.gcaData && this.os.listItem.selected['@id']) {
 
     return result;
   }
+
   openEditGCAOverlay(value: any, index:number): void {
     let htmlValue = this.os.getBlankNodeValue(value['@id']) || value['@id'] || value['@value'];
     htmlValue = htmlValue.replace(/<[^>]*>/g,'').split('http')[0].trim();
@@ -228,13 +292,14 @@ if (!this.gcaData && this.os.listItem.selected['@id']) {
         // const deleteBnodeId = {'@id': bnodeId};
         // const i = this.os.listItem.gcaOthers.indexOf(data);
         // const i2 = this.gcaData.indexOf(deleteBnodeId);
-        this.updateGCA();
+        // this.updateGCA();
         this.values = this.os.listItem.generalClassAxiom;
         this.others = this.os.listItem.gcaOthers;
         //this.os.saveCurrentChanges().subscribe();
       }
     });
   }
+
   openRemoveGCAOverlay(iri: any, index:number): void {
     let htmlValue = this.os.getBlankNodeValue(iri['@id']) || iri['@id'] || iri['@value'];
     htmlValue = htmlValue.replace(/<[^>]*>/g,'').split('http')[0].trim();
