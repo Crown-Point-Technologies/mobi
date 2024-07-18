@@ -218,9 +218,16 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
         .subscribe((result) => {
           if (result) {
             const responseBlankNode= this.os.listItem.inProgressCommit.additions;
+            const responseSelectedBlankNode= this.os.listItem.selectedBlankNodes;
+            let deleteBNode:any;
+            if(responseBlankNode?.length > 0){
+              deleteBNode = responseBlankNode;
+            } else {
+              deleteBNode = responseSelectedBlankNode;
+            }
             const deletionObj:any[] = [];
             const deletedData :JSONLDObject[] =
-                this.os.extractRemovePropertyChainValues(responseBlankNode,removeGenId);
+                this.os.extractRemovePropertyChainValues(deleteBNode,removeGenId);
             deletionObj.push(deletedData);
 
             const index = this.propertyChainDatas.
