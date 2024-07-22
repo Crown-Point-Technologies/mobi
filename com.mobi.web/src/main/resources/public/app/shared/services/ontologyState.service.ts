@@ -1047,7 +1047,7 @@ return ob;
      * Clears the the InProgressCommit on the current `listItem`
      */
     clearInProgressCommit(): void {
-        this.listItem.inProgressCommit = new Difference();
+        // this.listItem.inProgressCommit = new Difference();
         // Needed to trigger component input watchers
         this.listItem = cloneDeep(this.listItem); 
         const idx = findIndex(this.list, item => item.versionedRdfRecord.recordId === this.listItem.versionedRdfRecord.recordId);
