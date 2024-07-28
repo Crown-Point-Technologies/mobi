@@ -3506,7 +3506,7 @@ public class OntologyRest {
 
             IRI entity = valueFactory.createIRI(entityId);
             String queryString = GET_GENERAL_CLASS_AXIOM_QUERY.replace("%ENTITY%", "<" + entity.stringValue() + ">");
-            return getResponseBuilderForGraphQuery(ontology, queryString, true, false, "jsonld")
+            return getResponseBuilderForGraphQuery(ontology, queryString, true, true, "jsonld")
                     .type(MediaType.APPLICATION_JSON_TYPE)
                     .build();
         }
@@ -3550,7 +3550,7 @@ public class OntologyRest {
                     .orElseThrow(() -> RestUtils.getErrorObjBadRequest(
                             new IllegalArgumentException("The ontology could not be found.")));
 
-            return getResponseBuilderForGraphQuery(ontology, GET_ALL_GENERAL_CLASS_AXIOM_QUERY, true, false, "jsonld")
+            return getResponseBuilderForGraphQuery(ontology, GET_ALL_GENERAL_CLASS_AXIOM_QUERY, true, true, "jsonld")
                     .type(MediaType.APPLICATION_JSON_TYPE)
                     .build();
         }

@@ -11,7 +11,7 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
      {
     	?entity rdfs:subClassOf ?subclass .
              FILTER(isBlank(?entity))
-    	?subclass (owl:intersectionOf|owl:someValuesFrom|owl:unionOf|owl:complementOf|owl:oneOf|<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest>|<http://www.w3.org/1999/02/22-rdf-syntax-ns#first>)+ <https://spec.industrialontologies.org/ontology/core/Core/Algorithm> .
+    	?subclass (owl:intersectionOf|owl:someValuesFrom|owl:unionOf|owl:complementOf|owl:oneOf|<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest>|<http://www.w3.org/1999/02/22-rdf-syntax-ns#first>)+ %ENTITY% .
         ?entity ?directpred ?directobj .
      }
      UNION {

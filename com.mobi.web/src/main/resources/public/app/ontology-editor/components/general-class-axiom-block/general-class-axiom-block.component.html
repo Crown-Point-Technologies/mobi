@@ -36,7 +36,6 @@
             <blank-node-value-display [node]="value">
             </blank-node-value-display>
             <div class="button-container d-flex">
-                <!--                *ngIf="isRemoveSet && !os.isImported(entity['@id']) && os.canModify()" "-->
                 <button  mat-icon-button color="primary" (click)="openRemoveGCAOverlay(value,i)" title="Delete">
                     <mat-icon>delete</mat-icon>
                 </button>
@@ -65,25 +64,7 @@
                     </button>
                 </div>
             </div>
-<!--            <br>-->
-<!--            <h1>Ends</h1>-->
-<!--            <br>-->
-<!--            <div *ngFor="let value of allGca; let i = index" class="prop-value-container d-flex p-1 ml-3 mt-1">-->
-<!--                <div [innerHTML]="value"></div>-->
-<!--                <div class="button-container d-flex">-->
-<!--                    &lt;!&ndash;                *ngIf="isRemoveSet && !os.isImported(entity['@id']) && os.canModify()" "&ndash;&gt;-->
-<!--                    <button  mat-icon-button color="primary" (click)="openRemoveGCAOverlay(value['@id'],i)" title="Delete">-->
-<!--                        <mat-icon>delete</mat-icon>-->
-<!--                    </button>-->
-<!--                    <button  mat-icon-button color="primary" (click)="openEditGCAOverlay(value,i)" title="Edit">-->
-<!--                        <mat-icon>edit</mat-icon>-->
-<!--                    </button>-->
-<!--                </div>-->
-<!--                <br>-->
-<!--            </div>-->
-
         </div>
-
     </div>
 
 </div>
