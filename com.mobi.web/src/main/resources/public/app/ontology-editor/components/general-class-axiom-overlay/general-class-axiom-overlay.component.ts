@@ -81,6 +81,10 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     }
     let values;
     this.gcaIRI = this.extractAfterSubClassOf();
+    if(this.gcaIRI.split(' ').length > 3) {
+      this.errorMessage = "General Class Axiom should have either one or two IRI."
+      return;
+    }
     const [firstEntity, operator, secondEntity] = this.gcaIRI.split(/(and | or |not |, )/).map(part => part.trim());
     const result = this.mc.manchesterToJsonld(this.expression, this.localNameMap, false);
     if (result.errorMessage) {
@@ -89,9 +93,10 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     } else if (result.jsonld.length === 0) {
       this.errorMessage = 'Expression resulted in no values. Please try again.';
       return;
-    } else if(!this._getFullIRI(firstEntity) || !this._getFullIRI(secondEntity)) {
-        this.errorMessage = !this._getFullIRI(firstEntity) ? `"${firstEntity}" does not correspond to a known IRI`
-                            : `"${secondEntity}" does not correspond to a known IRI`;
+    } else if(!this._getFullIRI(firstEntity) || (secondEntity && !this._getFullIRI(secondEntity))) {
+        this.errorMessage = !this._getFullIRI(firstEntity) ?
+            `"${firstEntity}" does not correspond to a known IRI`
+            : `"${secondEntity}" does not correspond to a known IRI`;
         return;
     } else {
       const keyword:boolean = this.hasMoreThanOneIRI(this.gcaIRI);
