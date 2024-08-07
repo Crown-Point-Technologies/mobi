@@ -25,7 +25,7 @@ import {OntologyStateService} from '../../../shared/services/ontologyState.servi
 import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
 import {ManchesterConverterService} from '../../../shared/services/manchesterConverter.service';
 import {forEach} from 'lodash';
-import {OWL, RDFS} from '../../../prefixes';
+import {RDFS} from '../../../prefixes';
 import {splitIRI} from '../../../shared/pipes/splitIRI.pipe';
 import { getSkolemizedIRI} from '../../../shared/utility';
 import {JSONLDObject} from '../../../shared/models/JSONLDObject.interface';
@@ -80,6 +80,8 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
       }
     }
     let values;
+    this.gcaIRI = this.extractAfterSubClassOf();
+    const [firstEntity, operator, secondEntity] = this.gcaIRI.split(/(and | or |not |, )/).map(part => part.trim());
     const result = this.mc.manchesterToJsonld(this.expression, this.localNameMap, false);
     if (result.errorMessage) {
       this.errorMessage = result.errorMessage;
@@ -87,8 +89,11 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     } else if (result.jsonld.length === 0) {
       this.errorMessage = 'Expression resulted in no values. Please try again.';
       return;
+    } else if(!this._getFullIRI(firstEntity) || !this._getFullIRI(secondEntity)) {
+        this.errorMessage = !this._getFullIRI(firstEntity) ? `"${firstEntity}" does not correspond to a known IRI`
+                            : `"${secondEntity}" does not correspond to a known IRI`;
+        return;
     } else {
-      this.gcaIRI = this.extractAfterSubClassOf();
       const keyword:boolean = this.hasMoreThanOneIRI(this.gcaIRI);
       if (keyword){
         this.gcaId = getSkolemizedIRI();
@@ -112,6 +117,12 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
         .subscribe(() => {
           this.dialogRef.close({gca: 'gca', values: values});
         });
+  }
+
+  _getFullIRI(ctx: string):boolean {
+    const localName = ctx;
+    const iri = this.localNameMap[localName];
+    return iri;
   }
 
   findRelatedObjects(selectedBlankNode:  JSONLDObject[], genid: string):  JSONLDObject[] {
@@ -158,7 +169,7 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     return words.length > 1;
   }
   getEntityName(entity: string): string {
-    return `https://spec.industrialontologies.org/ontology/core/Core/${entity}`;
+    return `${this.os.listItem.ontologyId}${entity}`;
   }
 
   getGCAPayload(id:string, str:string){
@@ -174,7 +185,7 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
 
     const [firstEntity, operator, secondEntity] = str.split(/(and | or |not |, )/).map(part => part.trim());
     if (!firstEntity || !secondEntity || !operator){
-      throw new Error('Invalid subClass IRI');
+      this.errorMessage = 'Invalid subClass IRI. It does not correspond to a known IRI.';
     }
 
     entities = [this.getEntityName(firstEntity), this.getEntityName(secondEntity)];
@@ -203,7 +214,7 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     if (this.gcaId){
       subClass = this.gcaId;
     } else {
-      subClass = `https://spec.industrialontologies.org/ontology/core/Core/${this.gcaIRI}`;
+      subClass = `${this.os.listItem.ontologyId}${this.gcaIRI}`;
     }
 
     if ((subClass !== this.os.listItem.ontologyId ) && !jsonObj[`${RDFS}subClassOf`]){
@@ -227,7 +238,6 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
       }
       return newObj;
     }
-    console.log('TESSST jsonObj',jsonObj);
     return jsonObj;
   }
 

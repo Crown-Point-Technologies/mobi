@@ -20,10 +20,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-import { concat, map, values, trim, filter, find, identity, get, intersection, head, includes, has,  } from 'lodash';
+import {
+    concat,
+    map,
+    values,
+    trim,
+    filter,
+    find,
+    identity,
+    get,
+    intersection,
+    head,
+    includes,
+    has,
+    split,
+} from 'lodash';
 import { ANTLRInputStream, CommonTokenStream } from 'antlr4ts';
 import { ParseTreeWalker } from 'antlr4ts/tree/ParseTreeWalker';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
 import { MOSLexer } from '../../vendor/antlr4/dist/MOSLexer';
 import { MOSParser } from '../../vendor/antlr4/dist/MOSParser';
@@ -34,9 +48,7 @@ import { OntologyManagerService } from './ontologyManager.service';
 import { OWL, RDF, RDFS, XSD } from '../../prefixes';
 import { splitIRI } from '../pipes/splitIRI.pipe';
 import { JSONLDObject } from '../models/JSONLDObject.interface';
-import { getPropertyId, isBlankNodeId } from '../utility';
-import {LexerATNSimulator} from 'antlr4ts/atn';
-import debug = LexerATNSimulator.debug;
+import {getPropertyId, isBlankNodeId} from '../utility';
 
 /**
  * @class shared.ManchesterConverterService
@@ -114,9 +126,6 @@ export class ManchesterConverterService {
         const start = usingDatatypeRange ? parser.dataRange() : parser.description();
         try {
             ParseTreeWalker.DEFAULT.walk(blankNodes, start);
-            // if (str.includes("subClassOf")) {
-            //     result.jsonld.push({ SubClassOf: str });
-            // }
         } catch (ex) {
             result.errorMessage = get(ex, 'message', ex);
             result.jsonld = undefined;
@@ -146,7 +155,7 @@ export class ManchesterConverterService {
 
     private _render(id, jsonld, index, html) {
         // private _render(id, jsonld, index, html, listKeyword = '') {
-        const entity = jsonld[index[id].position];
+        const entity = jsonld[index[id]?.position];
         let result = '';
         if (this.om.isClass(entity)) {
             result = this._renderClass(entity, jsonld, index, html);
@@ -189,7 +198,6 @@ export class ManchesterConverterService {
     }
 
     private _gcaRender(id, jsonld, index, html) {
-    // private _render(id, jsonld, index, html, listKeyword = '') {
         const entity = jsonld[index[id]?.position];
         let result = '';
         if (this.om.isClass(entity)) {
@@ -212,7 +220,7 @@ export class ManchesterConverterService {
                 gcaSubClass = this._surround(gcaSubClass,this.restrictionClassName);
                 const isGCA = isBlankNodeId(subClassOf['@id']);
                 if (!isGCA) {
-                    const subClassLabel  = this.om.getEntityName({'@id': subClassOf['@id']});
+                    const subClassLabel  = splitIRI(subClassOf['@id']).end;
                     gcaSubClass += ' ' + subClassLabel;
                 } else {
                     const genid = subClassOf['@id'];
@@ -244,7 +252,6 @@ export class ManchesterConverterService {
 result += ' ' + gcaSubClass;
 }
         }
-        console.log('RESULT MANCHESTER SYNTAX#$%%$##$%%$#',result);
         return result;
     }
     private _renderRestriction(entity, jsonld, index, html) {
