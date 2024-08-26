@@ -49,6 +49,7 @@ import { OWL, RDF, RDFS, XSD } from '../../prefixes';
 import { splitIRI } from '../pipes/splitIRI.pipe';
 import { JSONLDObject } from '../models/JSONLDObject.interface';
 import {getPropertyId, isBlankNodeId} from '../utility';
+import {SharedDataManagerService} from "./shared-data-manager.service";
 
 /**
  * @class shared.ManchesterConverterService
@@ -86,8 +87,11 @@ export class ManchesterConverterService {
     datatypeKeywords = {
         [`${OWL}oneOf`]: ', ' // {a1 a2 ... an}.
     };
+    listItem:any;
 
-    constructor(private om: OntologyManagerService) {}
+    constructor(private om: OntologyManagerService, private sdm:SharedDataManagerService) {
+        this.getListITem();
+    }
 
     /**
      * Returns the full list of supported Manchester Syntax keywords.
@@ -96,6 +100,22 @@ export class ManchesterConverterService {
      */
     getKeywords(): string[] {
         return concat(filter(map(values(this.expressionKeywords), trim), identity), map(values(this.expressionKeywords), trim));
+    }
+
+    /**
+     * Get the Ontology listItem
+     */
+    getListITem() {
+        this.sdm.annotationSubject.subscribe(data =>{
+            this.listItem = data;
+        });
+    }
+
+    /**
+     *Get Entity IRI Label
+     **/
+    getEntityLabel(IRI:string){
+        return this.listItem.entityInfo[IRI]?.label;
     }
     /**
      * Converts a Manchester Syntax string into an array of blank nodes using an ANTLR4 grammer parser and
@@ -203,7 +223,7 @@ export class ManchesterConverterService {
         if (this.om.isClass(entity)) {
             result = this._gcaRenderClass(entity, jsonld, index, html);
         } else if (this.om.isRestriction(entity)) {
-            result = this._renderRestriction(entity, jsonld, index, html);
+            result = this._gcaRenderRestriction(entity, jsonld, index, html);
         } else if (this.om.isDatatype(entity)) {
             result = this._renderDatatype(entity, jsonld, index, html);
         }
@@ -220,7 +240,8 @@ export class ManchesterConverterService {
                 gcaSubClass = this._surround(gcaSubClass,this.restrictionClassName);
                 const isGCA = isBlankNodeId(subClassOf['@id']);
                 if (!isGCA) {
-                    const subClassLabel  = splitIRI(subClassOf['@id']).end;
+                    const subClassLabel  = this.getEntityLabel(subClassOf['@id']);
+                    // splitIRI(subClassOf['@id']).end;
                     gcaSubClass += ' ' + subClassLabel;
                 } else {
                     const genid = subClassOf['@id'];
@@ -254,6 +275,57 @@ export class ManchesterConverterService {
         }
         return result;
     }
+
+    private _gcaRenderRestriction(entity, jsonld, index, html) {
+        let result = '';
+        const subClass = intersection(Object.keys(entity), Object.keys(this.subClassKeyword));
+        const onProperty = getPropertyId(entity, `${OWL}onProperty`);
+        const onClass = getPropertyId(entity, `${OWL}onClass`);
+        let gcaSubClass='';
+        if (subClass.length === 1){
+            const subClassOf = head(entity[subClass[0]]);
+            gcaSubClass = this.subClassKeyword[subClass[0]];
+            gcaSubClass = this._surround(gcaSubClass,this.restrictionClassName);
+            const isGCA = isBlankNodeId(subClassOf['@id']);
+            if (!isGCA) {
+                const subClassLabel  = this.getEntityLabel(subClassOf['@id']);
+                // splitIRI(subClassOf['@id']).end;
+                gcaSubClass += ' ' + subClassLabel;
+            } else {
+                const genid = subClassOf['@id'];
+                const getSubClassIRI = this._gcaRender(genid,jsonld,index,html);
+                gcaSubClass += ' ' + getSubClassIRI;
+            }
+        }
+        if (onProperty) {
+            const propertyRestriction = this.getEntityLabel(onProperty);
+            // splitIRI(onProperty).end;
+            let classRestriction = onClass ?  this.getEntityLabel(onClass): undefined; //splitIRI(onClass).end
+            if (isBlankNodeId(onClass)) {
+                const bNodeEntity = find(jsonld, {'@id': onClass});
+                if (bNodeEntity) {
+                    const bNodeClassStr = this._gcaRenderClass(bNodeEntity, jsonld, index, html);
+                    classRestriction = bNodeClassStr ? `(${bNodeClassStr})`: classRestriction;
+                }
+            }
+            const prop = intersection(Object.keys(entity), Object.keys(this.restrictionKeywords));
+            if (prop.length === 1) {
+                const item = head(entity[prop[0]]);
+                const keyword = html ? this._surround(this.restrictionKeywords[prop[0]], this.restrictionClassName) : this.restrictionKeywords[prop[0]];
+                if (has(item, '@list')) {
+                    const itemListObject = item['@list'][0];
+                    result += propertyRestriction + keyword + this._getValue(itemListObject, jsonld, index, html) + (classRestriction ? ' ' + classRestriction : '');
+                } else {
+                    result += propertyRestriction + keyword + this._getValue(item, jsonld, index, html) + (classRestriction ? ' ' + classRestriction : '');
+                }
+            }
+        }
+        if (gcaSubClass){
+            result += ' ' + gcaSubClass;
+        }
+        return result;
+    }
+
     private _renderRestriction(entity, jsonld, index, html) {
         let result = '';
         const onProperty = getPropertyId(entity, `${OWL}onProperty`);
@@ -333,7 +405,8 @@ export class ManchesterConverterService {
         } else {
             const value = get(item, '@id');
             if (!isBlankNodeId(value)) {
-                return splitIRI(value).end;
+                return this.getEntityLabel(value);
+                // return splitIRI(value).end;
             }
             return listKeyword ? this._render(value, jsonld, index, html) : `(${this._render(value, jsonld, index, html)})`;
             // return listKeyword ? this._render(value, jsonld, index, html, listKeyword) : '(' + this._render(value, jsonld, index, html) + ')';

@@ -28,6 +28,9 @@ import {GeneralClassAxiomOverlayComponent} from '../general-class-axiom-overlay/
 import {ManchesterConverterService} from '../../../shared/services/manchesterConverter.service';
 import {JSONLDObject} from '../../../shared/models/JSONLDObject.interface';
 import {ConfirmModalComponent} from '../../../shared/components/confirmModal/confirmModal.component';
+import {switchMap} from "rxjs/operators";
+import {Subject, Subscription} from "rxjs";
+import {SharedDataManagerService} from "../../../shared/services/shared-data-manager.service";
 
 @Component({
   selector: 'general-class-axiom-block',
@@ -35,13 +38,25 @@ import {ConfirmModalComponent} from '../../../shared/components/confirmModal/con
   styleUrls: ['./general-class-axiom-block.component.scss']
 })
 export class GeneralClassAxiomBlockComponent implements OnInit {
+  private subscription = new Subscription();
+  private destroy$ = new Subject<void>();
   gcaData:JSONLDObject[];
   values: { [key: string]: string; }[] = [];
   others: { [key: string]: string; }[] = [];
   constructor(public om: OntologyManagerService, public os: OntologyStateService, private dialog: MatDialog,
-              private mc: ManchesterConverterService) {}
+              private mc: ManchesterConverterService, private sdm:SharedDataManagerService) {}
 
   ngOnInit() {
+
+    this.subscription.add(
+        this.sdm.annotationSubject.pipe(
+            switchMap(() => this.os.getSelectedGeneralClassAxiom())
+        ).subscribe(data => {
+          this.gcaData = data;
+          this.updateGCA();
+        })
+    );
+
     if (this.os.listItem.selected['@id']) {
       this.os.getSelectedGeneralClassAxiom()
           .subscribe(data => {
@@ -177,5 +192,12 @@ export class GeneralClassAxiomBlockComponent implements OnInit {
             });
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    // Complete the destroy subject to clean up subscriptions
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.subscription.unsubscribe();
   }
 }

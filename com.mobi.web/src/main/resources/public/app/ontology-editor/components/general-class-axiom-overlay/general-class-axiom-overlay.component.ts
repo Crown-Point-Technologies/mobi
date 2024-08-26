@@ -29,6 +29,7 @@ import {RDFS} from '../../../prefixes';
 import {splitIRI} from '../../../shared/pipes/splitIRI.pipe';
 import { getSkolemizedIRI} from '../../../shared/utility';
 import {JSONLDObject} from '../../../shared/models/JSONLDObject.interface';
+import {SharedDataManagerService} from "../../../shared/services/shared-data-manager.service";
 
 @Component({
   selector: 'app-general-class-axiom-overlay',
@@ -57,7 +58,7 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
 
   constructor( private os: OntologyStateService,
                private dialogRef: MatDialogRef<GeneralClassAxiomOverlayComponent>,
-               private mc: ManchesterConverterService,
+               private mc: ManchesterConverterService, private sdm:SharedDataManagerService,
                @Inject(MAT_DIALOG_DATA) public data: {generalClassAxiomList: {iri: string, valuesKey: string}[], exp: string, action: string, id:string}) {
     this.action = data.action;
     this.expression = data.exp === null ? this.expression : data.exp;
@@ -70,6 +71,7 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
   }
 
   addAxiom(): void {
+    this.sdm.getUpdatedLabelsIRI(this.os.listItem);
     if (this.action === 'edit') {
       delete this.os.listItem.blankNodes[this.id];
       const deleteGCAsObj =
@@ -114,8 +116,8 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
         this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, obj);
         this.os.listItem.selectedBlankNodes.push(obj);
       });
-      // const bnodeIndex = this.os.getBnodeIndex(this.os.listItem.selectedBlankNodes);
-      // this.os.listItem.blankNodes[bnodeId] = this.mc.gcaJsonldToManchester(bnodeId, this.os.listItem.selectedBlankNodes, bnodeIndex, true);
+      const bnodeIndex = this.os.getBnodeIndex(this.os.listItem.selectedBlankNodes);
+      this.os.listItem.blankNodes[bnodeId] = this.mc.gcaJsonldToManchester(bnodeId, this.os.listItem.selectedBlankNodes, bnodeIndex, true);
     }
     this.os.saveCurrentChanges()
         .subscribe(() => {

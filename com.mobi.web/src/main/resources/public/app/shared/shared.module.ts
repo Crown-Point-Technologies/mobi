@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -149,6 +149,7 @@ import { TrustedHtmlPipe } from './pipes/trustedHtml.pipe';
 
 import { MobiErrorStateMatcher } from './MobiErrorStateMatcher';
 import { HistoryGraph } from '../history-graph/history-graph.module';
+import {SharedDataManagerService} from "./services/shared-data-manager.service";
 
 
 /**
@@ -367,6 +368,7 @@ import { HistoryGraph } from '../history-graph/history-graph.module';
         RecordPermissionsManagerService,
         RepositoryManagerService,
         SettingManagerService,
+        SharedDataManagerService,
         ShapesGraphManagerService,
         ShapesGraphStateService,
         SparqlManagerService,
