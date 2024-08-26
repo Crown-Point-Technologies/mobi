@@ -120,7 +120,7 @@ import {ChangesItem} from '../../ontology-editor/components/savedChangesTab/save
 export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
     catalogId = '';
     type = ONTOLOGYEDITOR + 'OntologyRecord';
-    isPreserve = true;
+    isPreserve = false;
     private _updateRefsExclude = [
         'element',
         'usagesElement',

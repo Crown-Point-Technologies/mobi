@@ -224,7 +224,7 @@ export class ManchesterConverterService {
                     gcaSubClass += ' ' + subClassLabel;
                 } else {
                     const genid = subClassOf['@id'];
-                    const getSubClassIRI = this._render(genid,jsonld,index,html);
+                    const getSubClassIRI = this._gcaRender(genid,jsonld,index,html);
                     gcaSubClass += ' ' + getSubClassIRI;
                 }
             }
@@ -249,8 +249,8 @@ export class ManchesterConverterService {
                 result = `{${result}}`;
             }
             if (gcaSubClass){
-result += ' ' + gcaSubClass;
-}
+                result += ' ' + gcaSubClass;
+            }
         }
         return result;
     }

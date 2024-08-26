@@ -30,7 +30,6 @@ import {splitIRI} from '../../../shared/pipes/splitIRI.pipe';
 import { getSkolemizedIRI} from '../../../shared/utility';
 import {JSONLDObject} from '../../../shared/models/JSONLDObject.interface';
 
-
 @Component({
   selector: 'app-general-class-axiom-overlay',
   templateUrl: './general-class-axiom-overlay.component.html',
@@ -77,6 +76,7 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
           this.findRelatedObjects(this.os.listItem.selectedBlankNodes, this.id);
       for ( const obj of deleteGCAsObj) {
         this.os.addToDeletions(this.os.listItem.versionedRdfRecord.recordId, obj);
+        this.os.listItem.selectedBlankNodes = this.os.listItem.selectedBlankNodes.filter(s=>s['@id'] !== obj['@id']);
       }
     }
     let values;
@@ -114,9 +114,8 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
         this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, obj);
         this.os.listItem.selectedBlankNodes.push(obj);
       });
-      const bnodeIndex = this.os.getBnodeIndex(this.os.listItem.selectedBlankNodes);
-      this.os.listItem.blankNodes[bnodeId] = this.mc.gcaJsonldToManchester(bnodeId, this.os.listItem.selectedBlankNodes, bnodeIndex, true);
-
+      // const bnodeIndex = this.os.getBnodeIndex(this.os.listItem.selectedBlankNodes);
+      // this.os.listItem.blankNodes[bnodeId] = this.mc.gcaJsonldToManchester(bnodeId, this.os.listItem.selectedBlankNodes, bnodeIndex, true);
     }
     this.os.saveCurrentChanges()
         .subscribe(() => {
@@ -124,7 +123,7 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
         });
   }
 
-  _getFullIRI(ctx: string):boolean {
+  _getFullIRI(ctx: string) {
     const localName = ctx;
     const iri = this.localNameMap[localName];
     return iri;
@@ -173,9 +172,6 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     const words = iri.trim().split(/\s+/);
     return words.length > 1;
   }
-  getEntityName(entity: string): string {
-    return `${this.os.listItem.ontologyId}${entity}`;
-  }
 
   getGCAPayload(id:string, str:string){
     const OWL = 'http://www.w3.org/2002/07/owl#';
@@ -193,7 +189,7 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
       this.errorMessage = 'Invalid subClass IRI. It does not correspond to a known IRI.';
     }
 
-    entities = [this.getEntityName(firstEntity), this.getEntityName(secondEntity)];
+    entities = [this._getFullIRI(firstEntity), this._getFullIRI(secondEntity)];
     keyword = Object.keys(expressionKeywords).find(key => expressionKeywords[key].trim() === operator);
 
     if (!keyword) {
@@ -219,7 +215,7 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     if (this.gcaId){
       subClass = this.gcaId;
     } else {
-      subClass = `${this.os.listItem.ontologyId}${this.gcaIRI}`;
+      subClass = this._getFullIRI(this.gcaIRI);
     }
 
     if ((subClass !== this.os.listItem.ontologyId ) && !jsonObj[`${RDFS}subClassOf`]){
@@ -253,5 +249,4 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     });
     return map;
   }
-
 }
