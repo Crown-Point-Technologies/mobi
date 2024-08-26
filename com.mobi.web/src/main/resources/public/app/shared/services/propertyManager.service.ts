@@ -171,6 +171,8 @@ export class PropertyManagerService {
         {label: 'Dutch', value: 'nl'},
         {label: 'Dzongkha', value: 'dz'},
         {label: 'English', value: 'en'},
+        {label: 'English (United States)', value: 'en-US'},
+        {label: 'English (United Kingdom)', value: 'en-GB'},
         {label: 'Esperanto', value: 'eo'},
         {label: 'Estonian', value: 'et'},
         {label: 'Ewe', value: 'ee'},
