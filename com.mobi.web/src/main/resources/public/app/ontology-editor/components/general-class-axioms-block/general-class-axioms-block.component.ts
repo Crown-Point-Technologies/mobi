@@ -29,6 +29,7 @@ import {JSONLDObject} from "../../../shared/models/JSONLDObject.interface";
 import {ConfirmModalComponent} from "../../../shared/components/confirmModal/confirmModal.component";
 import {GeneralClassAxiomOverlayComponent} from "../general-class-axiom-overlay/general-class-axiom-overlay.component";
 import {SafeHtml} from "@angular/platform-browser";
+import {SharedDataManagerService} from "../../../shared/services/shared-data-manager.service";
 
 @Component({
   selector: 'general-class-axioms-block',
@@ -41,7 +42,7 @@ export class GeneralClassAxiomsBlockComponent implements OnInit {
   generalClassAxiomsData:JSONLDObject[];
   values: { [key: string]: string; }[] = [];
   constructor(public om: OntologyManagerService, public os: OntologyStateService, private dialog: MatDialog,
-              private mc: ManchesterConverterService) {}
+              private mc: ManchesterConverterService,private sdm:SharedDataManagerService) {}
 
   ngOnInit() {
     if(!this.generalClassAxiomsData) {
@@ -56,6 +57,7 @@ export class GeneralClassAxiomsBlockComponent implements OnInit {
   }
 
   updateGCA(){
+    this.sdm.getUpdatedLabelsIRI(this.os.listItem);
     this.values = [];
     const bnodeIndex = this.os.getBnodeIndex(this.generalClassAxiomsData);
 
