@@ -114,6 +114,8 @@ import { PropertyChainOverlayComponent } from './components/property-chain-overl
 import { GeneralClassAxiomsBlockComponent } from './components/general-class-axioms-block/general-class-axioms-block.component';
 import { GeneralClassAxiomBlockComponent } from './components/general-class-axiom-block/general-class-axiom-block.component';
 import { GeneralClassAxiomOverlayComponent } from './components/general-class-axiom-overlay/general-class-axiom-overlay.component';
+import { SameAsBlockComponent } from './components/same-as-block/same-as-block.component';
+import { SameAsOverlayComponent } from './components/same-as-overlay/same-as-overlay.component';
 
 /**
  * @namespace ontology-editor
@@ -215,6 +217,8 @@ import { GeneralClassAxiomOverlayComponent } from './components/general-class-ax
         GeneralClassAxiomBlockComponent,
         GeneralClassAxiomOverlayComponent,
         GeneralClassAxiomsBlockComponent,
+        SameAsBlockComponent,
+        SameAsOverlayComponent,
     ]
 })
 export class OntologyEditorModule {}
