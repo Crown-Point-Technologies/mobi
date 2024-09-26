@@ -116,6 +116,10 @@ import { GeneralClassAxiomBlockComponent } from './components/general-class-axio
 import { GeneralClassAxiomOverlayComponent } from './components/general-class-axiom-overlay/general-class-axiom-overlay.component';
 import { SameAsBlockComponent } from './components/same-as-block/same-as-block.component';
 import { SameAsOverlayComponent } from './components/same-as-overlay/same-as-overlay.component';
+import { NegativeObjectPropertyOverlayComponent } from './components/negativeObjectPropertyOverlay/negative-object-property-overlay/negative-object-property-overlay.component';
+import { NegativeObjectPropertyBlockComponent } from './components/negative-object-property-block/negative-object-property-block.component';
+import { NegativeDataPropertyBlockComponent } from './components/negative-data-property-block/negative-data-property-block.component';
+import { NegativeDataPropertyOverlayComponent } from './components/negative-data-property-overlay/negative-data-property-overlay.component';
 
 /**
  * @namespace ontology-editor
@@ -219,6 +223,10 @@ import { SameAsOverlayComponent } from './components/same-as-overlay/same-as-ove
         GeneralClassAxiomsBlockComponent,
         SameAsBlockComponent,
         SameAsOverlayComponent,
+        NegativeObjectPropertyOverlayComponent,
+        NegativeObjectPropertyBlockComponent,
+        NegativeDataPropertyBlockComponent,
+        NegativeDataPropertyOverlayComponent,
     ]
 })
 export class OntologyEditorModule {}

@@ -2340,6 +2340,9 @@ return ob;
         console.log('entityId',listItem.selected['@id']);
         return this.om.getGeneralClassAxiom(listItem.versionedRdfRecord.recordId,listItem.selected['@id']);
     }
+    getNegativeProperty(listItem: OntologyListItem = this.listItem){
+        return this.om.getNegativeProperty(listItem.versionedRdfRecord.recordId,listItem.selected['@id']);
+    }
     /**
      * Saves the additions and deletions on the current `listItem` to the current user's InProgressCommit
      * 

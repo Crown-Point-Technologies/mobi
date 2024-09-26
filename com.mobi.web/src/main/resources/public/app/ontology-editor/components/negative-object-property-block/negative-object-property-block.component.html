@@ -1,0 +1,53 @@
+<!--
+  #%L
+  com.mobi.web
+  $Id:$
+  $HeadURL:$
+  %%
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+  %%
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  #L%
+  -->
+<div class="datatype-property-block">
+    <div class="section-header">
+        <h5>Negative Object Property Assertions</h5>
+        <a *ngIf="!os.isSelectedImported() && os.canModify()"
+           (click)="openAddNegativeObjectPropOverlay()" class="float-right fa fa-fw fa-plus"></a>
+    </div>
+
+    <div>
+        <div class="property-values mt-3" *ngFor="let prop of datas; index as $index">
+            <div class="prop-header d-flex align-items-baseline clearfix" *ngIf="prop[targetIndividual]">
+                <p class="text text-truncate m-0" title="{{prop['http://www.w3.org/2002/07/owl#assertionProperty'][0]['@id']}}">{{os.getEntityNameByListItem(prop["http://www.w3.org/2002/07/owl#assertionProperty"][0]["@id"], os.listItem)}}</p>
+                <small class="ml-1 text-muted text-truncate flex-1">&lt;{{prop['http://www.w3.org/2002/07/owl#assertionProperty'][0]['@id']}}&gt;</small>
+            </div>
+
+            <div class="prop-value-container d-flex p-1 ml-3 mt-1" *ngIf="prop[targetIndividual] && prop[targetIndividual][0]">
+                    <span class="value-display-wrapper flex-1 remove-min-width">
+                        {{os.getEntityNameByListItem(prop["http://www.w3.org/2002/07/owl#sourceIndividual"][0]["@id"], os.listItem)}}
+                <small class="text-muted type-display"> [type: <span [innerHtml]="typeValue"></span>]</small>
+                <span class="value-display-wrapper flex-1 remove-min-width">{{os.getEntityNameByListItem(prop["http://www.w3.org/2002/07/owl#sourceIndividual"][0]["@id"])}}
+                    <small>
+                    &lt;<a (click)="os.goTo(prop[targetIndividual][0]['@id'])">{{prop[targetIndividual][0]["@id"]}}</a>&gt;
+                </small>
+                </span>
+                    </span>
+                <div class="button-container">
+                    <button mat-icon-button color="primary" (click)="showRemovePropertyOverlay(prop,$index)" title="Delete"><mat-icon>delete</mat-icon></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

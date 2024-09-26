@@ -1,0 +1,57 @@
+<!--
+  #%L
+  com.mobi.web
+  $Id:$
+  $HeadURL:$
+  %%
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+  %%
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  #L%
+  -->
+<div class="object-property-block">
+    <div class="section-header">
+        <h5>Negative Datatype Property Assertions</h5>
+        <a *ngIf="!os.isSelectedImported() && os.canModify()"
+           (click)="openAddNegativeDataPropOverlay()" class="float-right fa fa-fw fa-plus">
+        </a>
+    </div>
+
+    <div>
+        <div class="property-values mt-3" *ngFor="let prop of negativeDatatypeProperty">
+            <div class="prop-header d-flex align-items-baseline clearfix" *ngIf="prop[targetValue]">
+                <p class="text text-truncate m-0" title="{{prop['http://www.w3.org/2002/07/owl#assertionProperty'][0]['@id']}}">{{os.getEntityNameByListItem(prop["http://www.w3.org/2002/07/owl#assertionProperty"][0]["@id"], os.listItem)}}</p>
+                <small class="ml-1 text-muted text-truncate flex-1">&lt;{{prop['http://www.w3.org/2002/07/owl#assertionProperty'][0]['@id']}}&gt;</small>
+            </div>
+
+            <div class="prop-value-container d-flex p-1 ml-3 mt-1" *ngIf="prop[targetValue] && prop[targetValue][0]">
+                <div class="has-value">
+                    <span [innerHtml]="prop[targetValue][0]['@value'] | safeHtml: 'html'"></span>
+                    <span>
+                    <small class="text-muted lang-display" *ngIf="prop[targetValue][0]['@language']">
+                     [language: {{prop[targetValue][0]['@language']}}]
+                    </small>
+                    <small *ngIf="prop[targetValue][0]['@type']" class="text-muted type-display">
+                        [type: {{prop[targetValue][0]['@type'] | prefixation}}]
+                     </small>
+                     </span>
+                </div>
+                <div class="button-container">
+                    <button mat-icon-button color="primary" (click)="showRemovePropertyOverlay(prop)" title="Delete"><mat-icon>delete</mat-icon></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

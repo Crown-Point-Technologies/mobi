@@ -181,6 +181,11 @@ export class OntologyManagerService {
         (`${this.prefix}/${encodeURIComponent(recordId)}/general-class-axioms/${encodeURIComponent(entityId)}`))
             .pipe(catchError(handleError));
     }
+    getNegativeProperty(recordId: string, entityId: string): Observable<JSONLDObject[]> {
+        return this.spinnerSrv.track(this.http.get<JSONLDObject[]>
+        (`${this.prefix}/${encodeURIComponent(recordId)}/negative-property/${encodeURIComponent(entityId)}`))
+            .pipe(catchError(handleError));
+    }
     /**
      * Calls the PUT /mobirest/ontologies/{recordId} endpoint which will return a new in-progress commit
      * object to be applied to the ontology.

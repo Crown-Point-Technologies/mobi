@@ -167,6 +167,7 @@ public class OntologyRest {
     private static final String GET_ENTITY_QUERY;
     private static final String GET_GENERAL_CLASS_AXIOM_QUERY;
     private static final String GET_ALL_GENERAL_CLASS_AXIOM_QUERY;
+    private static final String GET_NEGATIVE_PROPERTY_QUERY;
     private static final String GET_PROPERTY_RANGES;
     private static final String GET_CLASS_PROPERTIES;
     private static final String GET_NO_DOMAIN_PROPERTIES;
@@ -175,6 +176,9 @@ public class OntologyRest {
 
     static {
         try {
+            GET_NEGATIVE_PROPERTY_QUERY = IOUtils.toString(
+                    OntologyRest.class.getResourceAsStream("/negative-property.rq"), StandardCharsets.UTF_8
+            );
             GET_GENERAL_CLASS_AXIOM_QUERY = IOUtils.toString(
                     OntologyRest.class.getResourceAsStream("/general-class-axioms.rq"), StandardCharsets.UTF_8
             );
@@ -3506,6 +3510,54 @@ public class OntologyRest {
 
             IRI entity = valueFactory.createIRI(entityId);
             String queryString = GET_GENERAL_CLASS_AXIOM_QUERY.replace("%ENTITY%", "<" + entity.stringValue() + ">");
+            return getResponseBuilderForGraphQuery(ontology, queryString, true, true, "jsonld")
+                    .type(MediaType.APPLICATION_JSON_TYPE)
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/{recordId}/negative-property/{entityId}")
+    @Produces({JSON_MIME_TYPE, TURTLE_MIME_TYPE, LDJSON_MIME_TYPE, RDFXML_MIME_TYPE})
+    @Operation(
+            tags = "ontologies",
+            summary = "Retrieves the limited results of the provided query",
+            responses = {
+                    @ApiResponse(responseCode = "200",
+                            description = "The SPARQL 1.1 results in mime type specified by accept header",
+                            content = {
+                                    @Content(mediaType = "*/*"),
+                                    @Content(mediaType = TURTLE_MIME_TYPE),
+                                    @Content(mediaType = LDJSON_MIME_TYPE),
+                                    @Content(mediaType = RDFXML_MIME_TYPE),
+                                    @Content(mediaType = JSON_MIME_TYPE)
+                            }),
+                    @ApiResponse(responseCode = "400", description = "BAD REQUEST", content = {
+                            @Content(mediaType = MediaType.APPLICATION_JSON,
+                                    schema = @Schema(implementation = ErrorObjectSchema.class)
+                            )
+                    }),
+                    @ApiResponse(responseCode = "403", description = "Permission Denied"),
+                    @ApiResponse(responseCode = "500", description = "INTERNAL SERVER ERROR", content = {
+                            @Content(mediaType = MediaType.APPLICATION_JSON,
+                                    schema = @Schema(implementation = ErrorObjectSchema.class)
+                            )
+                    })
+            }
+    )
+    @RolesAllowed("user")
+    @ActionId(value = Read.TYPE)
+    @ResourceId(type = ValueType.PATH, value = "recordId")
+    public Response getNegativePropertyByEntityId(@PathParam("recordId") String recordId,
+                                              @PathParam("entityId") String entityId,
+                                              @Context HttpServletRequest servletRequest) {
+        try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
+            Ontology ontology = getOntology(servletRequest, recordId, null, null, true, conn)
+                    .orElseThrow(() -> RestUtils.getErrorObjBadRequest(
+                            new IllegalArgumentException("The ontology could not be found.")));
+
+            IRI entity = valueFactory.createIRI(entityId);
+            String queryString = GET_NEGATIVE_PROPERTY_QUERY.replace("%ENTITY%", "<" + entity.stringValue() + ">");
             return getResponseBuilderForGraphQuery(ontology, queryString, true, true, "jsonld")
                     .type(MediaType.APPLICATION_JSON_TYPE)
                     .build();

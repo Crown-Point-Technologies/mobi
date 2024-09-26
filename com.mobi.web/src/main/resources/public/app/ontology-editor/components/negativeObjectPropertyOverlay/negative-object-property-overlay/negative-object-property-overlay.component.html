@@ -1,0 +1,69 @@
+<!--
+  #%L
+  com.mobi.web
+  $Id:$
+  $HeadURL:$
+  %%
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+  %%
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  #L%
+  -->
+<!--
+  #%L
+  com.mobi.web
+  $Id:$
+  $HeadURL:$
+  %%
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+  %%
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  #L%
+  -->
+<h1 mat-dialog-title>Add Negative Object Property Value</h1>
+<form mat-dialog-content [formGroup]="negativeObjectPropertyForm" class="object-property-overlay-form">
+    <!-- object property list -->
+    <mat-form-field class="w-100">
+        <mat-label>Object Property</mat-label>
+        <input type="text"
+               matInput
+               formControlName="negativePropertySelect"
+               placeholder="Select an object property"
+               [matAutocomplete]="autoComplete">
+        <mat-autocomplete #autoComplete="matAutocomplete" [displayWith]="getName.bind(this)">
+            <mat-optgroup *ngFor="let group of filteredIriList | async" [label]="group.namespace">
+                <mat-option *ngFor="let option of group.options" [value]="option.item" [title]="option.item">
+                    {{option.name}}
+                </mat-option>
+            </mat-optgroup>
+        </mat-autocomplete>
+    </mat-form-field>
+    <!-- value -->
+    <iri-select-ontology [(selected)]="propertyValue" [selectList]="individuals" displayText="Value" [singleSelect]="true"></iri-select-ontology>
+</form>
+<div mat-dialog-actions class="object-property-overlay-actions">
+    <button mat-raised-button [mat-dialog-close]="false">Cancel</button>
+    <button mat-raised-button color="primary" (click)="addProperty()" [disabled]="!negativeObjectPropertyForm.valid || !propertyValue.length">Submit</button>
+</div>
