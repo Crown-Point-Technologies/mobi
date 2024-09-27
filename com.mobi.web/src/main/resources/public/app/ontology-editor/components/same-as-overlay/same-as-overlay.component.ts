@@ -30,6 +30,7 @@ import {cloneDeep} from "lodash";
 import {createJson} from "../../../shared/utility";
 import {SameAsBlockComponent} from "../same-as-block/same-as-block.component";
 import {OWL} from "../../../prefixes";
+import {JSONLDObject} from "../../../shared/models/JSONLDObject.interface";
 
 @Component({
   selector: 'app-same-as-overlay',
@@ -53,12 +54,19 @@ export class SameAsOverlayComponent implements OnInit {
     const select = `${OWL}sameAs`;
     const value = this.propertyValue[0];
     const valueObj = {'@id': value};
+    const newValue = {'@id':this.os.listItem.selected['@id']};
     const added = this.pm.addId(this.os.listItem.selected, select, value);
+    const obj1 = createJson(this.os.listItem.selected['@id'], select, valueObj);
+    const obj2 = createJson(value, select, newValue);
 
     if (added) {
       this.os.addToAdditions(
           this.os.listItem.versionedRdfRecord.recordId,
-          createJson(this.os.listItem.selected['@id'], select, valueObj)
+          obj1
+      );
+      this.os.addToAdditions(
+          this.os.listItem.versionedRdfRecord.recordId,
+          obj2
       );
       this.os.saveCurrentChanges().subscribe();
     }

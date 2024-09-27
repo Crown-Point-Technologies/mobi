@@ -78,16 +78,7 @@ export class NegativeDataPropertyOverlayComponent implements OnInit {
         startWith(''),
         map(value => this.filter(value || ''))
     );
-    if (this.data.editingProperty) {
-      this.propertyForm.controls.propertySelect.setValue(this.data.propertySelect);
-      this.propertyForm.controls.propertySelect.disable();
-      this.propertyForm.controls.propertyValue.setValue(this.data.propertyValue);
-      this.propertyForm.controls.language.setValue(this.data.propertyLanguage);
-      this.propertyType = [this.data.propertyType];
-    } else {
-      // Should already be enabled on startup, mostly here for test purposes
-      this.propertyForm.controls.propertySelect.enable();
-    }
+
   }
   filter(val: string): PropGrouping[] {
     if (!this.dataProperties || !this.dataProperties.length) {
@@ -107,6 +98,7 @@ export class NegativeDataPropertyOverlayComponent implements OnInit {
     const sourceIndiValueObj = {'@id':this.os.listItem.selected["@id"]}
     const valueObj = this.pm.createValueObj(propertyValue, realType, lang)
     const genid = getSkolemizedIRI();
+
     const payload:JSONLDObject = {
       '@id': genid,
       '@type':[`${OWL}NegativePropertyAssertion`],
@@ -114,13 +106,8 @@ export class NegativeDataPropertyOverlayComponent implements OnInit {
       [`${OWL}sourceIndividual`]: [sourceIndiValueObj],
       [`${OWL}targetValue`]: [valueObj],
     }
-    const added = this.pm.addValue(this.os.listItem.selected, selectedValue, propertyValue, realType, lang);
-    if (added) {
       this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId,payload);
       this.os.saveCurrentChanges().subscribe();
-    } else {
-      this.toast.createWarningToast('Duplicate property values not allowed');
-    }
     this.dialogRef.close();
   }
   isLangString(): boolean {

@@ -24,7 +24,7 @@ import {Component, Input, OnChanges, OnInit} from '@angular/core';
 import {OntologyStateService} from "../../../shared/services/ontologyState.service";
 import {MatDialog} from "@angular/material/dialog";
 import {get, has, sortBy} from "lodash";
-import {RDF, XSD} from "../../../prefixes";
+import {OWL, RDF, XSD} from "../../../prefixes";
 import {
   NegativeDataPropertyOverlayComponent
 } from "../negative-data-property-overlay/negative-data-property-overlay.component";
@@ -44,7 +44,8 @@ export class NegativeDataPropertyBlockComponent implements OnChanges {
   dataPropertiesFiltered: string[] = [];
   negativeDatatypeProperty = [];
   typeValue = "owl:NegativePropertyAssertion";
-  targetValue = 'http://www.w3.org/2002/07/owl#targetValue';
+  targetValue = `${OWL}targetValue`;
+  assertionProperty = `${OWL}assertionProperty`;
 
   constructor(public os: OntologyStateService,
       private dialog: MatDialog) {}
@@ -79,10 +80,10 @@ export class NegativeDataPropertyBlockComponent implements OnChanges {
     this.dialog.open(ConfirmModalComponent,{
       data: {
         content:  `<p>Are you sure you want to remove:<br>
-            <strong>${prop['http://www.w3.org/2002/07/owl#assertionProperty'][0]['@id']}</strong></p>
+            <strong>${prop[this.assertionProperty][0]['@id']}</strong></p>
             <p>with value:<br><strong>`
             + `${prop[this.targetValue][0]['@value']}</strong></p><p>from:<br><strong>`
-            + `${prop["http://www.w3.org/2002/07/owl#sourceIndividual"][0]["@id"]}</strong>?</p>`
+            + `${prop[`${OWL}sourceIndividual`][0]["@id"]}</strong>?</p>`
       }
     }).afterClosed().subscribe((result: boolean) => {
       if (result) {

@@ -95,15 +95,9 @@ export class NegativeObjectPropertyOverlayComponent implements OnInit {
       [`${OWL}sourceIndividual`]: [sourceIndiValueObj],
       [`${OWL}targetIndividual`]: [valueObj],
     }
-    const added = this.pm.addId(this.os.listItem.selected, select, value);
-
-    if (added) {
       this.os.addToAdditions(
           this.os.listItem.versionedRdfRecord.recordId,payload);
       this.os.saveCurrentChanges().subscribe();
-    } else {
-      this.toast.createWarningToast('Duplicate property values not allowed');
-    }
     const types = this.os.listItem.selected['@type'];
     if (this.os.containsDerivedConcept(types) || this.os.containsDerivedConceptScheme(types)) {
       this.os.updateVocabularyHierarchies(select, [valueObj]);

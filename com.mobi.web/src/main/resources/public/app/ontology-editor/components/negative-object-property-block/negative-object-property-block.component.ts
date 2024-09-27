@@ -31,6 +31,7 @@ import {
 } from "../negativeObjectPropertyOverlay/negative-object-property-overlay/negative-object-property-overlay.component";
 import {isBlankNodeId} from "../../../shared/utility";
 import {JSONLDObject} from "../../../shared/models/JSONLDObject.interface";
+import {OWL} from "../../../prefixes";
 
 @Component({
   selector: 'negative-object-property-block',
@@ -44,26 +45,20 @@ export class NegativeObjectPropertyBlockComponent implements OnChanges {
   objectPropertiesFiltered: string[] = [];
   datas = [];
   typeValue = "owl:NegativePropertyAssertion";
-  targetIndividual = 'http://www.w3.org/2002/07/owl#targetIndividual';
-
+  targetIndividual = `${OWL}targetIndividual`;
+  assertionProperty = `${OWL}assertionProperty`;
   constructor(public os: OntologyStateService,
               private dialog: MatDialog) {}
 
   ngOnChanges(): void {
-    this.updatePropertiesFiltered();
     if (this.os.listItem.selected['@id']) {
       this.os.getNegativeProperty().subscribe(data => {
         this.datas = data;
       });
     }
   }
-  updatePropertiesFiltered(): void{
-    this.objectProperties = Object.keys(this.os.listItem.objectProperties.iris);
-    this.objectPropertiesFiltered = sortBy(this.objectProperties.filter(prop => has(this.os.listItem.selected, prop)), iri => this.os.getEntityNameByListItem(iri));
-  }
   openAddNegativeObjectPropOverlay(): void {
     this.dialog.open(NegativeObjectPropertyOverlayComponent).afterClosed().subscribe(() => {
-      this.updatePropertiesFiltered();
     });
   }
   showRemovePropertyOverlay(prop: JSONLDObject, index: number): void {
@@ -83,7 +78,6 @@ export class NegativeObjectPropertyBlockComponent implements OnChanges {
         this.os.getNegativeProperty().subscribe(data => {
           this.datas = data;
         });
-          this.updatePropertiesFiltered();
       }
     });
   }
