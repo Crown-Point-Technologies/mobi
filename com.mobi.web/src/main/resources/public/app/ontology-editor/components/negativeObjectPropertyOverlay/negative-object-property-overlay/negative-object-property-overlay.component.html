@@ -42,7 +42,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #L%
   -->
-<h1 mat-dialog-title>Add Negative Object Property Value</h1>
+<h1 mat-dialog-title>Add Negative Object Property</h1>
 <form mat-dialog-content [formGroup]="negativeObjectPropertyForm" class="object-property-overlay-form">
     <!-- object property list -->
     <mat-form-field class="w-100">
@@ -61,7 +61,7 @@
         </mat-autocomplete>
     </mat-form-field>
     <!-- value -->
-    <iri-select-ontology [(selected)]="propertyValue" [selectList]="individuals" displayText="Value" [singleSelect]="true"></iri-select-ontology>
+    <iri-select-ontology [(selected)]="propertyValue" [selectList]="individuals" displayText="Individuals" [singleSelect]="true"></iri-select-ontology>
 </form>
 <div mat-dialog-actions class="object-property-overlay-actions">
     <button mat-raised-button [mat-dialog-close]="false">Cancel</button>
