@@ -1,0 +1,60 @@
+<!--
+  #%L
+  com.mobi.web
+  $Id:$
+  $HeadURL:$
+  %%
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+  %%
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  #L%
+  -->
+<div class="object-property-block">
+    <div class="section-header">
+        <h5>Types</h5>
+        <a *ngIf="!os.isSelectedImported() && os.canModify()" (click)="openAddTypeOverlay()" class="float-right fa fa-fw fa-plus"></a>
+    </div>
+
+    <div *ngIf="os.listItem.selected && os.listItem.selected['@type']?.length" class="type-wrapper entity-types">
+    <div class="property-values">
+        <div class="prop-value-container d-flex p-1 ml-3 mt-1"
+             *ngFor="let value of typeValues; index as $index">
+
+            <span *ngIf="os.isLinkable(value);"
+                  class="value-display-wrapper flex-1 remove-min-width">
+                {{os.getEntityNameByListItem(value)}}
+                <small>&lt;<a (click)="os.goTo(value)">{{value}}</a>&gt;</small>
+            </span>
+            <span  class="value-display-wrapper flex-1 remove-min-width" *ngIf="isBlankNodeId(value);"> <blank-node-value-display [node]="value">
+            </blank-node-value-display>
+               </span>
+            <span *ngIf="!isBlankNodeId(value) && !os.isLinkable(value);"
+                  class="value-display-wrapper flex-1 remove-min-width">
+                {{os.getEntityNameByListItem(value, os.listItem)}}
+                <small>&lt;<a (click)="os.goTo(value)">{{value}}</a>&gt;</small>
+            </span>
+
+            <div class="button-container">
+                <button mat-icon-button color="primary"
+                        (click)="showRemovePropertyOverlay(value, $index)" title="Delete"><mat-icon>delete</mat-icon>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+
+
+</div>

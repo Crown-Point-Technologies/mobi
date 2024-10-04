@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -56,7 +56,7 @@ export class BlankNodeValueDisplayComponent implements OnInit {
     }
 
     private calcNodeProperties(): void {
-        this.htmlValue = this.safeHtml.transform(this.os.getBlankNodeValue(this.node['@id']) || this.node['@id'] || this.node['@value'], 'html');
+        this.htmlValue = this.safeHtml.transform(this.os.getBlankNodeValue(this.node['@id']) || this.os.getBlankNodeValue(this.node) || this.node['@id'] || this.node['@value'], 'html');
         this.typeValue = this.node['@type'] ? this.safeHtml.transform(this.prefixation.transform(this.node['@type']), 'html') : undefined;
         this.langValue = this.node['@language'] ? this.safeHtml.transform(this.prefixation.transform(this.node['@language']), 'html') : undefined;
     }
