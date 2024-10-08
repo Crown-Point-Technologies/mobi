@@ -63,16 +63,22 @@ export class NegativeDataPropertyOverlayComponent implements OnInit {
               public os: OntologyStateService,
               private pm: PropertyManagerService,
               private fb: UntypedFormBuilder,
-              private toast: ToastService,
               @Inject(MAT_DIALOG_DATA) public data: { editingProperty: boolean,
                 propertySelect: string,
                 propertyValue: string,
                 propertyType: string,
                 propertyIndex: number,
-                propertyLanguage: string
+                propertyLanguage: string,
+                prop?:JSONLDObject
               }) {}
 
   ngOnInit(): void {
+    if(this.data?.editingProperty === true) {
+      this.propertyForm.controls.propertySelect.setValue(this.data.prop[`${OWL}assertionProperty`][0]["@id"]);
+      this.propertyForm.controls.propertyValue.setValue(this.data.prop[`${OWL}targetValue`][0]["@value"]);
+      this.propertyForm.controls.language.setValue(this.data.prop[`${OWL}targetValue`][0]["@language"]);
+      this.propertyType[0] = this.data.propertyType;
+    }
     this.dataProperties = Object.keys(this.os.listItem.dataProperties.iris);
     this.dataPropertiesFiltered =  this.propertyForm.controls.propertySelect.valueChanges.pipe(
         startWith(''),
@@ -87,7 +93,11 @@ export class NegativeDataPropertyOverlayComponent implements OnInit {
     return this.os.getGroupedSelectList(this.dataProperties, val, iri => this.os.getEntityNameByListItem(iri));
   }
   submit(): void {
+    if(this.data?.editingProperty){
+      this.eddProperty();
+    } else{
       this.addProperty();
+    }
   }
   addProperty (): void {
     const selectedValue = this.propertyForm.controls.propertySelect.value;
@@ -110,6 +120,13 @@ export class NegativeDataPropertyOverlayComponent implements OnInit {
       this.os.saveCurrentChanges().subscribe();
     this.dialogRef.close();
   }
+
+  eddProperty(){
+    this.os.addToDeletions(
+        this.os.listItem.versionedRdfRecord.recordId,this.data.prop);
+    this.addProperty();
+  }
+
   isLangString(): boolean {
     return `${RDF}langString` === (this.propertyType ? this.propertyType[0]: '');
   }

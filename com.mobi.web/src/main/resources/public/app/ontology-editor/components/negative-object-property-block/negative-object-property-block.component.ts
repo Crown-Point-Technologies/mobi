@@ -32,6 +32,7 @@ import {
 import {isBlankNodeId} from "../../../shared/utility";
 import {JSONLDObject} from "../../../shared/models/JSONLDObject.interface";
 import {OWL} from "../../../prefixes";
+import {PropertyChainOverlayComponent} from "../property-chain-overlay/property-chain-overlay.component";
 
 @Component({
   selector: 'negative-object-property-block',
@@ -58,7 +59,7 @@ export class NegativeObjectPropertyBlockComponent implements OnChanges {
     }
   }
   openAddNegativeObjectPropOverlay(): void {
-    this.dialog.open(NegativeObjectPropertyOverlayComponent).afterClosed().subscribe(() => {
+    this.dialog.open(NegativeObjectPropertyOverlayComponent).afterClosed().subscribe((result) => {
     });
   }
   showRemovePropertyOverlay(prop: JSONLDObject, index: number): void {
@@ -75,11 +76,21 @@ export class NegativeObjectPropertyBlockComponent implements OnChanges {
         this.os.addToDeletions(
             this.os.listItem.versionedRdfRecord.recordId,prop);
         this.os.saveCurrentChanges().subscribe();
-        this.os.getNegativeProperty().subscribe(data => {
-          this.datas = data;
-        });
       }
     });
   }
 
+  editNegativeObjectPropOverlay(iri:JSONLDObject): void {
+    const individual = iri[this.targetIndividual][0]["@id"];
+    const op = iri[this.assertionProperty][0]["@id"];
+    this.dialog.open(NegativeObjectPropertyOverlayComponent, {
+      data: {
+        editing: true,
+        prop:iri,
+        op:op,
+        individual:individual
+      },
+    }).afterClosed().subscribe((result) => {
+    });
+  }
 }

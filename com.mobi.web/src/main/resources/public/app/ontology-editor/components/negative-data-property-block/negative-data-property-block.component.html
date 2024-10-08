@@ -27,7 +27,6 @@
            (click)="openAddNegativeDataPropOverlay()" class="float-right fa fa-fw fa-plus">
         </a>
     </div>
-
     <div>
         <div class="property-values mt-3" *ngFor="let prop of negativeDatatypeProperty">
             <div class="prop-header d-flex align-items-baseline clearfix" *ngIf="prop[assertionProperty] && prop[targetValue]">
@@ -49,6 +48,7 @@
                 </div>
                 <div class="button-container">
                     <button mat-icon-button color="primary" (click)="showRemovePropertyOverlay(prop)" title="Delete"><mat-icon>delete</mat-icon></button>
+                    <button mat-icon-button color="primary" (click)="editNegativeDataPropOverlay(prop)" title="Edit"><mat-icon>edit</mat-icon></button>
                 </div>
             </div>
         </div>

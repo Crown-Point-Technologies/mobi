@@ -31,6 +31,11 @@ import {
 import {ConfirmModalComponent} from "../../../shared/components/confirmModal/confirmModal.component";
 import {JSONLDObject} from "../../../shared/models/JSONLDObject.interface";
 import {isBlankNodeId} from "../../../shared/utility";
+import {
+  NegativeObjectPropertyOverlayComponent
+} from "../negativeObjectPropertyOverlay/negative-object-property-overlay/negative-object-property-overlay.component";
+import {LexerATNSimulator} from "antlr4ts/atn";
+import debug = LexerATNSimulator.debug;
 
 @Component({
   selector: 'negative-data-property-block',
@@ -46,33 +51,20 @@ export class NegativeDataPropertyBlockComponent implements OnChanges {
   typeValue = "owl:NegativePropertyAssertion";
   targetValue = `${OWL}targetValue`;
   assertionProperty = `${OWL}assertionProperty`;
+  individual = `${OWL}sourceIndividual`;
 
   constructor(public os: OntologyStateService,
       private dialog: MatDialog) {}
 
   ngOnChanges(): void  {
-    // this.updatePropertiesFiltered();
     if (this.os.listItem.selected['@id']) {
       this.os.getNegativeProperty().subscribe(data => {
         this.negativeDatatypeProperty = data;
       });
     }
   }
-  // updatePropertiesFiltered(): void {
-  //   this.dataProperties = Object.keys(this.os.listItem.dataProperties.iris);
-  //   this.dataPropertiesFiltered = sortBy(this.dataProperties.filter(prop => has(this.os.listItem.selected, prop)), iri => this.os.getEntityNameByListItem(iri));
-  // }
   openAddNegativeDataPropOverlay(): void {
-    const data = {
-      editingProperty: false,
-      propertySelect: undefined,
-      propertyValue: '',
-      propertyType: `${XSD}string`,
-      propertyIndex: 0,
-      propertyLanguage: 'en'
-    };
-    this.dialog.open(NegativeDataPropertyOverlayComponent, { data }).afterClosed().subscribe(() => {
-      // this.updatePropertiesFiltered();
+    this.dialog.open(NegativeDataPropertyOverlayComponent).afterClosed().subscribe(() => {
     });
   }
 
@@ -90,11 +82,25 @@ export class NegativeDataPropertyBlockComponent implements OnChanges {
         this.os.addToDeletions(
             this.os.listItem.versionedRdfRecord.recordId,prop);
         this.os.saveCurrentChanges().subscribe();
-        this.os.getNegativeProperty().subscribe(data => {
-          this.negativeDatatypeProperty = data;
-        });
-        // this.updatePropertiesFiltered();
       }
+    });
+  }
+
+  editNegativeDataPropOverlay(p: JSONLDObject){
+    const sourceIndividual = p[this.individual][0]["@id"];
+    const language = p[this.targetValue][0]["@language"];
+    const value = p[this.targetValue][0]["@value"];
+    const type = p[this.targetValue][0]['@type']
+    this.dialog.open(NegativeDataPropertyOverlayComponent, {
+      data: {
+        editingProperty: true,
+        propertySelect: sourceIndividual,
+        propertyValue: value,
+        propertyType: type ? type : `${XSD}string`,
+        propertyLanguage: language,
+        prop:p
+      },
+    }).afterClosed().subscribe((result) => {
     });
   }
 

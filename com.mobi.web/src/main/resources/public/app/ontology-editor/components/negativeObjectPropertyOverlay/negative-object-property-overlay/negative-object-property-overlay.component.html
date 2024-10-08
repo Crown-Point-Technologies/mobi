@@ -42,7 +42,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #L%
   -->
-<h1 mat-dialog-title>Add Negative Object Property</h1>
+<h1 mat-dialog-title>{{data?.editing ? 'Edit Negative Object Property' : 'Add Negative Object Property'}}</h1>
 <form mat-dialog-content [formGroup]="negativeObjectPropertyForm" class="object-property-overlay-form">
     <!-- object property list -->
     <mat-form-field class="w-100">
@@ -65,5 +65,5 @@
 </form>
 <div mat-dialog-actions class="object-property-overlay-actions">
     <button mat-raised-button [mat-dialog-close]="false">Cancel</button>
-    <button mat-raised-button color="primary" (click)="addProperty()" [disabled]="!negativeObjectPropertyForm.valid || !propertyValue.length">Submit</button>
+    <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!negativeObjectPropertyForm.valid || !propertyValue.length">Submit</button>
 </div>

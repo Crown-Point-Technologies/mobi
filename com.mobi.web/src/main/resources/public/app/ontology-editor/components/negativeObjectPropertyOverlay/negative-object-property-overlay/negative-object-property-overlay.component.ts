@@ -20,12 +20,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-import { Component, OnInit } from '@angular/core';
+import {Component, Inject, OnInit} from '@angular/core';
 import {UntypedFormBuilder, Validators} from "@angular/forms";
 import {OntologyStateService} from "../../../../shared/services/ontologyState.service";
 import {ToastService} from "../../../../shared/services/toast.service";
 import {PropertyManagerService} from "../../../../shared/services/propertyManager.service";
-import {MatDialogRef} from "@angular/material/dialog";
+import {MAT_DIALOG_DATA, MatDialogRef} from "@angular/material/dialog";
 import {ObjectPropertyBlockComponent} from "../../objectPropertyBlock/objectPropertyBlock.component";
 import {debounceTime, map, startWith} from "rxjs/operators";
 import {cloneDeep} from "lodash";
@@ -33,6 +33,8 @@ import {createJson, getSkolemizedIRI} from "../../../../shared/utility";
 import {Observable} from "rxjs";
 import { OWL } from '../../../../prefixes';
 import {JSONLDObject} from "../../../../shared/models/JSONLDObject.interface";
+import {PropertyOverlayDataOptions} from "../../../../shared/models/propertyOverlayDataOptions.interface";
+import {NegativeObjectPropertyOptions} from "../../../../shared/models/negativeObjectProperty.interface";
 
 interface PropGrouping {
   namespace: string,
@@ -59,12 +61,17 @@ export class NegativeObjectPropertyOverlayComponent implements OnInit {
   });
 
   constructor(public os:OntologyStateService,
-              private toast: ToastService,
-              private pm: PropertyManagerService,
               private fb: UntypedFormBuilder,
-              private dialogRef: MatDialogRef<ObjectPropertyBlockComponent>) {}
+              private dialogRef: MatDialogRef<ObjectPropertyBlockComponent>,
+              @Inject(MAT_DIALOG_DATA) public data: NegativeObjectPropertyOptions) {
+  }
 
   ngOnInit(): void {
+    if(this.data?.editing){
+      this.negativeObjectPropertyForm.controls['negativePropertySelect'].
+      setValue(this.data.prop[`${OWL}assertionProperty`][0]["@id"]);
+      this.propertyValue[0] = this.data.prop[`${OWL}targetIndividual`][0]["@id"];
+    }
     this.objectProperties = Object.keys(this.os.listItem.objectProperties.iris);
     this.filteredIriList = this.negativeObjectPropertyForm.controls.negativePropertySelect.valueChanges
         .pipe(
@@ -81,12 +88,21 @@ export class NegativeObjectPropertyOverlayComponent implements OnInit {
     }
     return this.os.getGroupedSelectList(this.objectProperties, val, iri => this.os.getEntityNameByListItem(iri));
   }
+
+  onSubmit(){
+    if(this.data?.editing){
+      this.editProperty();
+    } else {
+      this.addProperty();
+    }
+  }
   addProperty(): void {
-    const select = this.negativeObjectPropertyForm.controls.negativePropertySelect.value;
-    const value = this.propertyValue[0];
+    const npValue = this.negativeObjectPropertyForm.controls.negativePropertySelect.value;
+    const select = this.data?.editing ? (npValue === this.data.op ? this.data.op : npValue) : npValue;
+    const value = this.data?.editing ? (this.propertyValue[0] === this.data.individual ? this.data.individual : this.propertyValue[0]) : this.propertyValue[0];
     const genid = getSkolemizedIRI();
     const assertionPropValueObj = {'@id':select};
-    const sourceIndiValueObj = {'@id':this.os.listItem.selected["@id"]}
+    const sourceIndiValueObj = {'@id':this.os.listItem.selected["@id"]};
     const valueObj = {'@id': value};
     const payload:JSONLDObject = {
       '@id': genid,
@@ -98,11 +114,13 @@ export class NegativeObjectPropertyOverlayComponent implements OnInit {
       this.os.addToAdditions(
           this.os.listItem.versionedRdfRecord.recordId,payload);
       this.os.saveCurrentChanges().subscribe();
-    const types = this.os.listItem.selected['@type'];
-    if (this.os.containsDerivedConcept(types) || this.os.containsDerivedConceptScheme(types)) {
-      this.os.updateVocabularyHierarchies(select, [valueObj]);
-    }
     this.dialogRef.close();
+  }
+
+  editProperty(){
+    this.os.addToDeletions(
+        this.os.listItem.versionedRdfRecord.recordId,this.data.prop);
+    this.addProperty();
   }
   getName(val: string): string {
     return val ? this.os.getEntityNameByListItem(val) : '';
