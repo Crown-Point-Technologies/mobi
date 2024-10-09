@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,19 +22,30 @@
  */
 import { formatDate } from '@angular/common';
 import { HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { forOwn, get, has, isArray, isEqual, isString, merge, remove, replace, set, some, unionWith } from 'lodash';
+import { find, forOwn, get, has, isArray, isEqual, isString, merge, reduce, remove, replace, set, some, unionWith } from 'lodash';
 import { Observable, throwError } from 'rxjs';
 import { v4 } from 'uuid';
+
+import moment from 'moment/moment';
+import * as sha1 from 'js-sha1';
 
 import { JSONLDObject } from './models/JSONLDObject.interface';
 import { JSONLDId } from './models/JSONLDId.interface';
 import { JSONLDValue } from './models/JSONLDValue.interface';
-import { DCTERMS, XSD } from '../prefixes';
+import { DC, DCTERMS, RDFS, SKOS, XSD } from '../prefixes';
 import { PaginatedConfig } from './models/paginatedConfig.interface';
 import { RESTError } from './models/RESTError.interface';
 import { REGEX } from '../constants';
 import { splitIRI } from './pipes/splitIRI.pipe';
 import { beautify } from './pipes/beautify.pipe';
+import { FormValues } from '../shacl-forms/models/form-values.interface';
+import { SHACLFormFieldConfig } from '../shacl-forms/models/shacl-form-field-config';
+
+export const entityNameProps = [
+  `${RDFS}label`, 
+  `${DCTERMS}title`, 
+  `${DC}title`, 
+];
 
 // General Utility Methods
 /**
@@ -99,8 +110,12 @@ export function getPropertyValue(entity: JSONLDObject, propertyIRI: string): str
 * @param {string} propertyIRI The IRI of a property
 * @param {string} value The new value for the property
 */
-export function setPropertyValue(entity: JSONLDObject, propertyIRI: string, value: string): void {
-  _setValue(entity, propertyIRI, {'@value': value});
+export function setPropertyValue(entity: JSONLDObject, propertyIRI: string, value: string, datatype?: string): void {
+  const valObj: JSONLDValue = {'@value': value};
+  if (datatype && datatype !== `${XSD}string`) {
+    valObj['@type'] = datatype;
+  }
+  _setValue(entity, propertyIRI, valObj);
 }
 
 /**
@@ -163,6 +178,31 @@ export function updatePropertyValue(entity: JSONLDObject, propertyIRI: string, v
 */
 export function getPropertyId(entity: JSONLDObject, propertyIRI: string): string {
   return get(entity, `['${propertyIRI}'][0]['@id']`, '');
+}
+
+/**
+ * Retrieves all ID values associated with the specified property from the given entity.
+ * Returns a set of strings containing these ID values. If no IDs are found, an empty set is returned.
+ *
+ * @param entity       The JSONLDObject representing the entity to retrieve the property IDs from
+ * @param propertyIRI  The IRI of the property
+ * @return A Set of strings containing all ID values associated with the property; an empty set if none are found
+ */
+export function getPropertyIds(entity: JSONLDObject, propertyIRI: string): Set<string> {
+  const propertyValues = get(entity, `['${propertyIRI}']`, []) as JSONLDObject[];
+  if (typeof propertyValues === 'string') {
+      return new Set();
+  }
+  const ids: Set<string> = new Set();
+
+  propertyValues.forEach(value => {
+    const id = get(value, '[\'@id\']', '');
+    if (id) {
+      ids.add(id);
+    }
+  });
+
+  return ids;
 }
 
 /**
@@ -285,6 +325,23 @@ export function updateDctermsValue(entity: JSONLDObject, property: string, value
  */
 export function getDctermsId(entity: JSONLDObject, property: string): string {
   return get(entity, `['${DCTERMS + property}'][0]['@id']`, '');
+}
+
+/**
+ * Adds a language specification on the dct:title, dct:description, and skos:prefLabel properties on the
+ * provided JSON-LD object.
+ * 
+ * @param {JSONLDObject} entity A JSON-LD Object
+ * @param {string} language The language tag to add
+ */
+export function addLanguageToAnnotations(entity: JSONLDObject, language: string): void {
+  if (language) {
+      [`${DCTERMS}title`, `${DCTERMS}description`, `${SKOS}prefLabel`].forEach(item => {
+          if (get(entity, `['${item}'][0]`)) {
+              set(entity[item][0], '@language', language);
+          }
+      });
+  }
 }
 
 /**
@@ -536,6 +593,138 @@ export function condenseCommitId(id: string): string {
   return splitIRI(id).end.substring(0, 10);
 }
 
+/**
+ * Gets the provided entity's name. This name is either the `rdfs:label`, `dcterms:title`, or `dc:title`.
+ * If none of those annotations exist, it returns the beautified `@id`. Prioritizes english language tagged
+ * values over the others. Returns a string for the entity name.
+ *
+ * @param {JSONLDObject} entity The entity you want the name of.
+ * @returns {string} The beautified IRI string.
+ */
+export function getEntityName(entity: JSONLDObject, props = entityNameProps): string {
+  let result = reduce(props, (tempResult, prop) => tempResult 
+      || _getPrioritizedValue(entity, prop), '');
+  if (!result && has(entity, '@id')) {
+      result = getBeautifulIRI(entity['@id']);
+  }
+  return result;
+}
+
+/**
+ * Converts a Date object to a formatted date string.
+ * If the date is not null, it formats it as "h:mm:ssA M/D/Y".
+ * If the date is null, it returns '(none)'.
+ *
+ * @param {Date|null} date - The date to format.
+ * @returns {string} The formatted date string or '(none)'.
+ */
+export function toFormattedDateString(date:Date|null):string {
+  return  date ? moment(date).format('h:mm:ssA M/D/Y') : '(none)';
+}
+
+/**
+* Returns '(none)' if the value is falsy.
+* If a function is provided and the value is truthy, it applies the function to the value.
+*
+* @param {any} value - The value to check.
+* @param {Function|null} [func=null] - The function to apply to the value if it's truthy.
+* @returns {any|string} The original value, transformed value, or '(none)'.
+*/
+export function orNone(value, func = null): string {
+  return value ? (func ? func(value) : value) : '(none)';
+}
+
+/**
+* Calculates the running time between two dates in seconds or minutes.
+* If either start time or end time is falsy, it returns '(none)'.
+* Otherwise, it calculates the duration and returns it in appropriate units.
+*
+* @param {Date} sTime - The start time.
+* @param {Date} eTime - The end time.
+* @returns {string} The running time in seconds or minutes, or '(none)'.
+*/
+export function runningTime (sTime:Date, eTime:Date): string {
+  if (!sTime || !eTime) {
+      return '(none)';
+  }
+  const startTime = moment(sTime);
+  const endTime = moment(eTime);
+  const duration = moment.duration(endTime.diff(startTime));
+  const seconds = duration.asSeconds();
+  return seconds < 60 ?
+      `${seconds} sec` : `${duration.asMinutes()} min`;
+}
+
+/**
+* Returns the status if it's not equal to 'never_run', otherwise returns a default value.
+* If status is truthy and not 'never_run', it returns the status after applying `orNone`.
+*
+* @param {string} status - The status to check.
+* @param {string} [defaultValue='never-run'] - The default value to return if status is 'never_run'.
+* @returns {string} The status or the default value.
+*/
+export function getStatus(status:string, defaultValue='never-run'): string {
+  return status !== 'never_run' ? orNone(status) : defaultValue;
+}
+
+/**
+ * Generates JSON-LD from the provided FormValues. Takes a JSON-LD object representing the node that the form is
+ * generating as an argument and the array of SHACLFormFieldConfigs represented in the provided FormValues. This method
+ * mutates the instance JSON-LD and returns a JSON-LD array containing the instance first and then any generated
+ * associated objects after.
+ * 
+ * @param {JSONLDObject} instance The JSON-LD object of the instance to populate using the form values
+ * @param {SHACLFormFieldConfig} configs The list of field configurations that were used to generate the form
+ * @param {FormValues} formValues The normalized collection of form field values from a SHACL form
+ * @returns {JSONLDObject[]} The JSON-LD array of the data generated by a SHACL form
+ */
+export function getShaclGeneratedData(instance: JSONLDObject, configs: SHACLFormFieldConfig[], formValues: FormValues): JSONLDObject[] {
+  const genData = [instance];
+  configs.forEach(config => {
+    const prop = config.property;
+    instance[prop] = [];
+    if (Array.isArray(formValues[prop])) {
+      // Iterate over the property value in the form
+      (formValues[prop] as string[] | { [key: string]: string }[]).forEach(val => {
+        let valToSet: string;
+        // If the property value is a simple string, use it directly
+        if (typeof val !== 'object') {
+          valToSet = '' + val;
+        } else { // If the property value is an object
+          const objVal = val as { [key: string]: string };
+          // If the field config has sub fields, need to generate an associated object
+          if (config.subFields && config.subFields.length) { 
+            const assocObject: JSONLDObject = _createAssociatedObject(config, objVal);
+            genData.push(assocObject);
+            valToSet = assocObject['@id'];
+          } else { 
+            // If the object has keys that start with the property name, assume all the values of the object are values of the property
+            const valKey = Object.keys(objVal).find(key => key.startsWith(prop));
+            valToSet = '' + objVal[valKey];
+          }
+        }
+        _setJSONLDPropValue(instance, config, valToSet);
+      });
+    } else { // Form value is not an array
+      let valToSet: string;
+      // If the form value is a simple value use it directly
+      if (typeof formValues[prop] !== 'object') {
+        valToSet = '' + formValues[prop];
+      } else { // If the form value is an object, need to generate/update an associated object for the complex setting value
+        const assocObject: JSONLDObject = _createAssociatedObject(config, formValues[prop] as { [key: string]: string});
+        genData.push(assocObject);
+        valToSet = assocObject['@id'];
+      }
+      _setJSONLDPropValue(instance, config, valToSet);
+    }
+    // If no values were found for the property, remove it from the settings instance
+    if (!instance[prop].length) {
+      delete instance[prop];
+    }
+  });
+  return genData;
+}
+
 // Private Functions
 function _setValue(entity: JSONLDObject, propertyIRI: string, valueObj: JSONLDId|JSONLDValue): void {
   if (has(entity, `['${propertyIRI}']`)) {
@@ -557,4 +746,58 @@ function _removeValue(entity: JSONLDObject, propertyIRI: string, valueObj: JSONL
 }
 function _convertToString(param: string | number | boolean): string {
   return typeof param === 'string' ? param : '' + param;
+}
+function _getPrioritizedValue(entity, prop) {
+  return get(find(get(entity, `['${prop}']`), {'@language': 'en'}), '@value') || getPropertyValue(entity, prop);
+}
+/**
+ * Creates a JSON-LD object representing an associated object for the property represented by the provided
+ * SHACLFormFieldConfig. Populates the properties on the associated object using the provided object of property keys
+ * to property values. Assumes the sh:NodeShape for the associated object uses implicit class targeting.
+ * 
+ * @param {SHACLFormFieldConfig} config The form configuration of the property that points to the associated object
+ * @param {{ {key: string}: string }} objectValue The values to use to populate the properties on the associated object
+ * @returns {JSONLDObject} The JSON-LD object of the generated associated object
+ */
+function _createAssociatedObject(config: SHACLFormFieldConfig, objectValue: { [key: string]: string }): JSONLDObject {
+  // Assumption that all the sub fields are for the same NodeShape (there isn't a situation this isn't true)
+  const subNodeShape = config.subFields[0].nodeShape;
+  // Assumes type of associated object is IRI of the NodeShape (i.e. implicit class target)
+  const className = splitIRI(subNodeShape['@id']).end;
+  const assocObject: JSONLDObject = {
+    '@id': `http://mobi.solutions/${className}#`,
+    '@type': [subNodeShape['@id']]
+  };
+  config.subFields.forEach(subConfig => {
+    _setJSONLDPropValue(assocObject, subConfig, objectValue[subConfig.property]);
+  });
+  // Deterministically create the local name for the associated object based off the type and properties
+  assocObject['@id'] += sha1.sha1(JSON.stringify(assocObject));
+  return assocObject;
+}
+/**
+ * Determines whether the provided string looks like an IRI or not.
+ * 
+ * @param {string} val The value of some field
+ * @returns {boolean} True if it looks like an IRI; false otherwise
+ */
+function _isIRIValue(val: string) {
+  return !!val.match(REGEX.IRI);
+}
+/**
+ * Sets the provided value for the provided property on the provided JSON-LD object based off whether it looks like an
+ * IRI value or a Literal value. Mutates the provided JSON-LD object.
+ * 
+ * @param {JSONLDObject} instance The JSON-LD object to set the property value on
+ * @param {string} prop The IRI of the property to set
+ * @param {string} value The property value to set
+ */
+function _setJSONLDPropValue(instance: JSONLDObject, config: SHACLFormFieldConfig, value: string): void {
+  if (value) {
+    if (_isIRIValue(value) && !config.datatype) {
+      setPropertyId(instance, config.property, value);
+    } else {
+      setPropertyValue(instance, config.property, value, config.datatype);
+    }
+  }
 }

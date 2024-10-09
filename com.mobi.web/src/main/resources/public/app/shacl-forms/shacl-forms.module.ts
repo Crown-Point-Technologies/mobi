@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -31,9 +31,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 import { SHACLFormComponent } from './components/shacl-form/shacl-form.component';
 import { SHACLFormFieldComponent } from './components/shacl-form-field/shacl-form-field.component';
+import { SHACLFormManagerService } from './services/shaclFormManager.service';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @NgModule({
   imports: [
@@ -47,7 +51,10 @@ import { SHACLFormFieldComponent } from './components/shacl-form-field/shacl-for
     MatInputModule,
     MatRadioModule,
     MatSlideToggleModule,
-    ReactiveFormsModule
+    MatSelectModule,
+    MatTooltipModule,
+    ReactiveFormsModule,
+    MatAutocompleteModule
   ],
   declarations: [
     SHACLFormComponent,
@@ -57,5 +64,8 @@ import { SHACLFormFieldComponent } from './components/shacl-form-field/shacl-for
     SHACLFormComponent,
     SHACLFormFieldComponent
   ],
+  providers: [
+    SHACLFormManagerService
+  ]
 })
 export class SHACLFormsModule { }

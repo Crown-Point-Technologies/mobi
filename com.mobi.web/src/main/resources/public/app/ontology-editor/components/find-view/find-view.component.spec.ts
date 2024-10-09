@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -115,6 +115,7 @@ describe('Find View component', function() {
             searchText: searchText,
             selected: omit(selected, '@id')
         };
+        component.isClosedArray = new Array(ontologyStateStub.listItem.editorTabStates.search.length).fill(false);
         ontologyStateStub.isLinkable.and.callFake(id => !!id);
         fixture.detectChanges();
     });
@@ -178,7 +179,7 @@ describe('Find View component', function() {
                             'class2'
                         ]
                     };
-                    ontologyStateStub.getEntityNameByListItem.and.returnValue('');
+                    ontologyStateStub.getEntityName.and.returnValue('');
                     ontologyManagerStub.getSearchResults.and.returnValue(of(results));
                     component.onKeyup();
                     fixture.detectChanges();
@@ -195,7 +196,7 @@ describe('Find View component', function() {
                         results['http://www.w3.org/2002/07/owl#Class'].push('class' + i);
                         results['http://www.w3.org/2002/07/owl#Concept'].push('concept' + i);
                     }
-                    ontologyStateStub.getEntityNameByListItem.and.returnValue('');
+                    ontologyStateStub.getEntityName.and.returnValue('');
                     ontologyManagerStub.getSearchResults.and.returnValue(of(results));
                     component.onKeyup();
                     fixture.detectChanges();
@@ -262,6 +263,17 @@ describe('Find View component', function() {
             component.unselectItem();
             expect(ontologyStateStub.unSelectItem).toHaveBeenCalledWith();
             expect(ontologyStateStub.listItem.editorTabStates.search.selected).toBeUndefined();
+        });
+        it('should close an individual element', function() {
+            component.toggleElement(0);
+            expect(component.isClosedArray[0]).toBe(true);
+        });
+        it('should ensure an individual element is expanded by default', function() {
+            expect(component.isClosedArray[0]).toBe(false);
+        });
+        it('should ensure an individual element is expanded, despite another being closed', function() {
+            component.toggleElement(1);
+            expect(component.isClosedArray[0]).toBe(false);
         });
     });
 });

@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,15 +20,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { get, find } from 'lodash';
 
 import { ConfirmModalComponent } from '../../../shared/components/confirmModal/confirmModal.component';
 import { JSONLDObject } from '../../../shared/models/JSONLDObject.interface';
 import { LoginManagerService } from '../../../shared/services/loginManager.service';
 import { UserManagerService } from '../../../shared/services/userManager.service';
-import { getDctermsId, getDctermsValue } from '../../../shared/utility';
+import { getDctermsId, getDctermsValue, getPropertyId } from '../../../shared/utility';
+import { MERGEREQ } from '../../../prefixes';
 
 /**
  * @class merge-requests.CommentDisplayComponent
@@ -49,32 +49,60 @@ import { getDctermsId, getDctermsValue } from '../../../shared/utility';
     templateUrl: './commentDisplay.component.html',
     styleUrls: ['./commentDisplay.component.scss']
 })
-export class CommentDisplayComponent {
+export class CommentDisplayComponent implements OnInit, OnChanges {
     commentText = '';
     creatorIRI = '';
+    creatorUsername = '';
     creator = '';
     isCreator: boolean;
     issued = '';
+    modified = '';
+    edit = false;
+    edited = false;
+    updatedComment = '';
+    tooltip = '';
 
     private _comment: JSONLDObject;
 
     @Input() isReply: boolean;
-    @Input() accepted: boolean;
+    @Input() requestStatus: string;
+    @Input() editInProgress: boolean;
     @Input() set comment(value: JSONLDObject) {
         this._comment = value;
         this.commentText = getDctermsValue(value, 'description');
         this.creatorIRI = getDctermsId(value, 'creator');
-        this.creator = get(find(this.um.users, {iri: this.creatorIRI}), 'username', '(Unknown)');
+        const user = this.um.users.find(user => user.iri === this.creatorIRI);
+        this.creatorUsername = user ? user.username : '[Not Available]';
+        this.creator = user ? user.displayName : '[Not Available]';
         this.isCreator = this.lm.currentUserIRI === this.creatorIRI;
         this.issued = getDctermsValue(value, 'issued');
+        this.modified = getDctermsValue(value, 'modified');
     }
     get comment(): JSONLDObject {
         return this._comment;
     }
     
     @Output() delete = new EventEmitter<string>();
+    @Output() editInProgressChange = new EventEmitter<boolean>();
+    @Output() saveEdit = new EventEmitter<{
+        commentId:string,
+        mergeRequestId: string,
+        newComment: string
+    }>();
 
     constructor(private dialog: MatDialog, private um: UserManagerService, private lm: LoginManagerService) {}
+
+    ngOnInit(): void {
+        if (this._comment) {
+            this.edited = !(this.issued === this.modified);
+        }
+
+        this.createTooltip();
+    }
+
+    ngOnChanges(): void {
+        this.createTooltip();
+    }
 
     confirmDelete(): void {
         this.dialog.open(ConfirmModalComponent, {
@@ -86,5 +114,39 @@ export class CommentDisplayComponent {
                 this.delete.emit(this.comment['@id']);
             }
         });
+    }
+
+    editComment(): void {
+        this.edit = true;
+        this.editInProgress = !this.editInProgress;
+        this.updatedComment = this.commentText;
+        this.editInProgressChange.emit(this.editInProgress);
+    }
+
+    save(): void {
+        const commentId = this._comment['@id'];
+        const mergeRequestId = getPropertyId(this._comment, `${MERGEREQ}onMergeRequest`);
+        const details = {
+            commentId,
+            mergeRequestId,
+            newComment: this.updatedComment
+        };
+        this.updatedComment = '';
+        this.edit = false;
+        this.editInProgress = !this.editInProgress;
+        this.editInProgressChange.emit(this.editInProgress);
+        this.saveEdit.emit(details);
+    }
+
+    cancel(): void {
+        this.updatedComment = '';
+        this.edit = false;
+        this.editInProgress = !this.editInProgress;
+        this.editInProgressChange.emit(this.editInProgress);
+    }
+
+    private createTooltip(): void {
+        this.tooltip = this.editInProgress ? 'Editing has been disabled as there is already an edit in progress' :
+            'Click to edit';
     }
 }

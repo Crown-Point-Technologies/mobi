@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,12 +20,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-import { find } from 'lodash';
 import { OnInit, Component } from '@angular/core';
 import { UntypedFormBuilder, Validators, UntypedFormGroup } from '@angular/forms';
 
 import { UserManagerService } from '../../../shared/services/userManager.service';
-import { User } from '../../../shared/models/user.interface';
+import { User } from '../../../shared/models/user.class';
 import { ToastService } from '../../../shared/services/toast.service';
 import { LoginManagerService } from '../../../shared/services/loginManager.service';
 
@@ -53,7 +52,7 @@ export class PasswordTabComponent implements OnInit {
         private toast: ToastService, private fb: UntypedFormBuilder) {}
 
     ngOnInit(): void {
-        this.currentUser = find(this.um.users, { username: this.lm.currentUser });
+        this.currentUser = this.um.users.find(user => user.username === this.lm.currentUser);
         if (!this.currentUser || this.currentUser.external) {
             this.disableAllFields(this.passwordForm);
         }

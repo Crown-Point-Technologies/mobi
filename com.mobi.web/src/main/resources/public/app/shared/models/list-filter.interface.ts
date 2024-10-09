@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -39,6 +39,7 @@ export interface ListFilter {
   numChecked: number, // The number of items checked
   onInit: () => void, // To be called when the filter first loads
   getItemText: (filterItem: FilterItem) => string, // Gets the display text of the filter
+  getItemTooltip?: (filterItem: FilterItem) => string // Gets the display text of the filter for tooltip
   setFilterItems: () => void, // Sets the list of filter items
   filter: (filterItem: FilterItem) => void // Executes the represented filter optionally using a specific provided
                                            //filter item. If checkbox, expected to update the numChecked variables

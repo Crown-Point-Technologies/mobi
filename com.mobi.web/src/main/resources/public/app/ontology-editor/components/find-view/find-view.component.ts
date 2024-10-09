@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -47,6 +47,7 @@ export class FindViewComponent implements OnDestroy {
     @ViewChild('searchResults', { static: true }) searchResults: ElementRef;
 
     sub: Subscription;
+    isClosedArray: boolean[] = [];
 
     constructor(public os: OntologyStateService, public om: OntologyManagerService,
                 private spinnerSvc: ProgressSpinnerService) {}
@@ -68,9 +69,10 @@ export class FindViewComponent implements OnDestroy {
                 .subscribe(results => {
                     state.search.errorMessage = '';
                     forEach(results, arr => {
-                        arr.sort((iri1, iri2) => this.os.getEntityNameByListItem(iri1, this.os.listItem).localeCompare(this.os.getEntityNameByListItem(iri2, this.os.listItem)));
+                        arr.sort((iri1, iri2) => this.os.getEntityName(iri1).localeCompare(this.os.getEntityName(iri2)));
                     });
                     state.search.results = results;
+                    this.isClosedArray = new Array(state.search.results.length).fill(false);
                     this.countResults();
                     state.search.infoMessage = !isEmpty(results) ? '' : 'There were no results for your search text.';
                     state.search.highlightText = state.search.searchText;
@@ -97,11 +99,14 @@ export class FindViewComponent implements OnDestroy {
                 this.os.listItem.editorTabStates.search.selected = omit(cloneDeep(this.os.listItem.selected), '@id', '@type', 'mobi');
             });
     }
+    toggleElement(index: number): void {
+        this.isClosedArray[index] = !this.isClosedArray[index];
+    }
     unselectItem(): void {
         this.os.unSelectItem();
         this.os.listItem.editorTabStates.search.selected = undefined;
     }
-    searchChanged(value): void {
+    searchChanged(value: string): void {
         this.os.listItem.editorTabStates.search.searchText = value;
     }
     trackByIndex = (index: number): number => {

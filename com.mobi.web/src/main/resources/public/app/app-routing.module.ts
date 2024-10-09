@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -40,6 +40,7 @@ import { MainLayoutComponent } from './layouts/main-layout.component';
 import { LoginLayoutComponent } from './layouts/login-layout.component';
 import { AlreadyAuthenticatedGuard } from './alreadyAuthenticated.guard';
 import { PERSPECTIVES } from './shared/models/routePerspective.interface';
+import { WorkflowsComponent } from './workflows/components/workflows/workflows.component';
 
 const routes: Routes = [
     {
@@ -54,6 +55,7 @@ const routes: Routes = [
             { path: 'catalog', component: CatalogPageComponent, data: { title: 'Catalog' } },
             { path: 'ontology-editor', component: OntologyEditorPageComponent, data: { title: 'Ontology Editor' } },
             { path: 'shapes-graph-editor', component: ShapesGraphEditorPageComponent, data: { title: 'Shapes Editor' } },
+            { path: 'workflows', component: WorkflowsComponent, data: {title: 'Workflows'} },
             { path: 'discover', component: DiscoverPageComponent, data: { title: 'Discover' } },
             { path: 'mapper', component: MapperPageComponent, data: { title: 'Mapping Tool' } },
             { path: 'datasets', component: DatasetsPageComponent, data: { title: 'Datasets' } },
@@ -79,6 +81,7 @@ const routes: Routes = [
             { icon: 'map-o', route: '/mapper', name: 'Mapping Tool' },
             { icon: 'database', route: '/datasets', name: 'Datasets' },
             { icon: 'search', route: '/discover', name: 'Discover' },
+            { mat: true, icon: 'fact_check', route: '/workflows', name: 'Workflows'},
         ]},
         AuthenticationGuard,
         AlreadyAuthenticatedGuard

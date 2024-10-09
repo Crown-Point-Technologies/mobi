@@ -4,7 +4,7 @@
   $Id:$
   $HeadURL:$
   %%
-  Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
   %%
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -39,7 +39,8 @@
             </mat-expansion-panel>
         </mat-accordion>
         <div class="text-center">
-            <a *ngIf="hasMoreResults" (click)="loadMore()"><i class="fa fa-fw fa-plus"></i><span>Load More</span></a>
+            <button *ngIf="hasMoreResults" mat-stroked-button color="primary" (click)="loadMore()">Load More</button>
+            <!-- <a *ngIf="hasMoreResults" (click)="loadMore()"><i class="fa fa-fw fa-plus"></i><span>Load More</span></a> -->
         </div>
     </div>
 </div>

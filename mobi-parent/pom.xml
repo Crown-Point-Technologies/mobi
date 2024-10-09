@@ -5,7 +5,7 @@
   $Id:$
   $HeadURL:$
   %%
-  Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
   %%
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -28,7 +28,7 @@
 
     <groupId>com.mobi</groupId>
     <artifactId>mobi-parent</artifactId>
-    <version>2.5.0-SNAPSHOT</version>
+    <version>3.1.0-SNAPSHOT</version>
 
     <packaging>pom</packaging>
 
@@ -89,11 +89,16 @@
         <osgi.version>8.0.0</osgi.version>
         <owlapi.version>5.5.0</owlapi.version>
         <owlapi.rdf4j.version>4.2.0</owlapi.rdf4j.version>
-        <poi.version>3.14_1</poi.version>
+        <poi.version>5.2.3_1</poi.version>
+        <!-- These deps are only needed for POI-->
+        <log4j.version>2.18.0</log4j.version>
+        <commons-compress.version>1.21</commons-compress.version>
+
         <rdf4j.version>4.3.2</rdf4j.version>
         <servlet.version>3.1.0</servlet.version>  <!-- 4.0.1 with later pax web -->
         <swagger.version>2.2.0</swagger.version>
         <jsonld-java.version>0.13.5.2-MOBI</jsonld-java.version>
+        <maven-artifact.version>3.5.2</maven-artifact.version>
     </properties>
 
     <dependencyManagement>
@@ -201,6 +206,17 @@
             <dependency>
                 <groupId>org.eclipse.rdf4j</groupId>
                 <artifactId>rdf4j-queryresultio-api</artifactId>
+                <version>${rdf4j.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.github.jsonld-java</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.rdf4j</groupId>
+                <artifactId>rdf4j-tools-federation</artifactId>
                 <version>${rdf4j.version}</version>
                 <exclusions>
                     <exclusion>
@@ -541,6 +557,18 @@
                 <version>1.7.1</version>
                 <scope>test</scope>
             </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-api</artifactId>
+                <version>${log4j.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -664,14 +692,13 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>2.17</version>
+                <version>3.3.1</version>
                 <executions>
                     <execution>
                         <id>validate</id>
                         <phase>validate</phase>
                         <configuration>
                             <configLocation>../google_checks.xml</configLocation>
-                            <encoding>UTF-8</encoding>
                             <consoleOutput>true</consoleOutput>
                         </configuration>
                         <goals>

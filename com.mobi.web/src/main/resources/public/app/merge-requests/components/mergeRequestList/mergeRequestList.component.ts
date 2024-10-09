@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { PageEvent } from '@angular/material/paginator';
 import { Subject } from 'rxjs';
@@ -45,9 +45,10 @@ import { ToastService } from '../../../shared/services/toast.service';
     templateUrl: './mergeRequestList.component.html',
     styleUrls: ['./mergeRequestList.component.scss']
 })
-export class MergeRequestListComponent implements OnInit {
+export class MergeRequestListComponent implements OnInit, OnDestroy {
     searchText = '';
     updateFiltersSubject: Subject<void> = new Subject<void>();
+    private _destroySub$ = new Subject<void>();
 
     constructor(public state: MergeRequestsStateService, public ms: MergeRequestManagerService, 
         private dialog: MatDialog, private toast: ToastService) {}
@@ -56,6 +57,10 @@ export class MergeRequestListComponent implements OnInit {
         this.state.requestSortOption = this.state.requestSortOption || this.ms.sortOptions[0];
         this.searchText = this.state.requestSearchText;
         this.loadRequests();
+    }
+    ngOnDestroy(): void {
+        this._destroySub$.next();
+        this._destroySub$.complete();
     }
     changeFilter(changeDetails: MergeRequestFilterEvent): void {
         this.state.acceptedFilter = changeDetails.requestStatus;
@@ -79,13 +84,13 @@ export class MergeRequestListComponent implements OnInit {
             pageIndex: this.state.currentRequestPage,
             limit: this.state.requestLimit,
             sortOption: this.state.requestSortOption,
-            accepted: this.state.acceptedFilter,
+            requestStatus: this.state.acceptedFilter,
             creators: this.state.creators,
             assignees: this.state.assignees,
             records: this.state.records,
             searchText: this.state.requestSearchText
         };
-        this.state.setRequests(paginatedConfig);
+        this.state.setRequests(paginatedConfig, this._destroySub$);
     }
     showDeleteOverlay(request: MergeRequest): void {
         this.dialog.open(ConfirmModalComponent, {

@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -30,5 +30,7 @@ export interface GitAction {
   commit?: Commit,
   mergeTo?: string;
   atCommit?: string;
+  optionalLabel?:string
+  renderBranchLabel?: boolean
   sortFlag?: boolean; // used to detect if commit happens before branch creation
 }

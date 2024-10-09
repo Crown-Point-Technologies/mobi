@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -32,13 +32,15 @@ import { of } from 'rxjs';
 
 import {
     cleanStylesFromDOM,
-} from '../../../../../public/test/ts/Shared';
+} from '../../../../test/ts/Shared';
 import { ConfirmModalComponent } from '../../../shared/components/confirmModal/confirmModal.component';
 import { JSONLDObject } from '../../../shared/models/JSONLDObject.interface';
 import { LoginManagerService } from '../../../shared/services/loginManager.service';
 import { UserManagerService } from '../../../shared/services/userManager.service';
+import { DCTERMS, USER, MERGEREQ } from '../../../prefixes';
+import { User } from '../../../shared/models/user.class';
+import { MarkdownEditorComponent } from '../../../shared/components/markdownEditor/markdownEditor.component';
 import { CommentDisplayComponent } from './commentDisplay.component';
-import { DCTERMS } from '../../../prefixes';
 
 describe('Comment Display component', function() {
     let component: CommentDisplayComponent;
@@ -54,45 +56,43 @@ describe('Comment Display component', function() {
         '@type': [],
         [`${DCTERMS}description`]: [{ '@value': 'description' }],
         [`${DCTERMS}issued`]: [{ '@value': 'issued' }],
+        [`${DCTERMS}modified`]: [{ '@value': 'modified' }],
         [`${DCTERMS}creator`]: [{ '@id': userId }],
+        [`${MERGEREQ}onMergeRequest`]: [{ '@id': 'https:www.example.com' }]
     };
 
-    beforeEach(async () => {
-        await TestBed.configureTestingModule({
+    beforeEach(() => {
+        TestBed.configureTestingModule({
             imports: [
                 NoopAnimationsModule,
                 MatButtonModule
             ],
             declarations: [
                 CommentDisplayComponent,
+                MockComponent(MarkdownEditorComponent),
                 MockComponent(ShowdownComponent),
             ],
             providers: [
                 MockProvider(UserManagerService),
                 MockProvider(LoginManagerService),
-                { provide: MatDialog, useFactory: () => jasmine.createSpyObj('MatDialog', {
-                    open: { afterClosed: () => of(true)}
-                }) }
+                {
+                    provide: MatDialog, useFactory: () => jasmine.createSpyObj('MatDialog', {
+                        open: {afterClosed: () => of(true)}
+                    })
+                }
             ],
-        });
-    });
-
-    beforeEach(function() {
+        }).compileComponents();
         fixture = TestBed.createComponent(CommentDisplayComponent);
         component = fixture.componentInstance;
         element = fixture.debugElement;
         userManagerStub = TestBed.inject(UserManagerService) as jasmine.SpyObj<UserManagerService>;
         matDialog = TestBed.inject(MatDialog) as jasmine.SpyObj<MatDialog>;
         
-        userManagerStub.users = [{
-            iri: userId,
-            username,
-            external: false,
-            firstName: '',
-            lastName: '',
-            email: '',
-            roles: []
-        }];
+        userManagerStub.users = [new User({
+            '@id': userId,
+            '@type': [`${USER}User`],
+            [`${USER}username`]: [{ '@value': username }],
+        })];
     });
 
     afterEach(function() {
@@ -110,6 +110,8 @@ describe('Comment Display component', function() {
         expect(component.creatorIRI).toEqual(userId);
         expect(component.creator).toEqual(username);
         expect(component.isCreator).toEqual(false);
+        expect(component.edit).toEqual(false);
+        expect(component.edited).toEqual(false);
         expect(component.issued).toEqual('issued');
     });
     describe('controller methods', function() {
@@ -121,13 +123,27 @@ describe('Comment Display component', function() {
             expect(matDialog.open).toHaveBeenCalledWith(ConfirmModalComponent, {data: {content: jasmine.stringMatching('Are you sure you want to delete')}});
             expect(component.delete.emit).toHaveBeenCalledWith(comment['@id']);
         }));
+        it('should emit an edited comment', fakeAsync(function() {
+            component.comment = comment;
+            spyOn(component.saveEdit, 'emit');
+            component.save();
+            tick();
+            const commentObject = {
+                'commentId': comment['@id'],
+                'mergeRequestId': 'https:www.example.com',
+                'newComment': ''
+            };
+            expect(component.saveEdit.emit).toHaveBeenCalledWith(commentObject);
+        }));
     });
     describe('contains the correct html', function() {
         it('for wrapping containers', function() {
+            fixture.detectChanges();
             expect(element.queryAll(By.css('.comment-display')).length).toEqual(1);
             expect(element.queryAll(By.css('.comment-title')).length).toEqual(1);
             expect(element.queryAll(By.css('.comment-body')).length).toEqual(1);
-            expect(element.queryAll(By.css('.comment-body-text')).length).toEqual(1);
+            expect(element.queryAll(By.css('showdown')).length).toEqual(1);
+            expect(element.queryAll(By.css('.markdown-editor')).length).toEqual(0);
         });
         it('if the comment is a reply', function() {
             fixture.detectChanges();
@@ -146,16 +162,26 @@ describe('Comment Display component', function() {
 
             component.isCreator = true;
             fixture.detectChanges();
-            expect(element.queryAll(By.css('.comment-body button')).length).toEqual(1);
+            expect(element.queryAll(By.css('.comment-body button')).length).toEqual(2);
         });
         it('if the request is accepted', function() {
             component.isCreator = true;
             fixture.detectChanges();
-            expect(element.queryAll(By.css('.comment-body button')).length).toEqual(1);
+            expect(element.queryAll(By.css('.comment-body button')).length).toEqual(2);
             
-            component.accepted = true;
+            component.requestStatus = 'accepted';
+            fixture.detectChanges();
+            expect(element.queryAll(By.css('.comment-body button')).length).toEqual(1);
+        });
+        it('if the comment is being edited', function() {
+            component.isCreator = true;
+            fixture.detectChanges();
+            expect(element.queryAll(By.css('.comment-body button')).length).toEqual(2);
+
+            component.edit = true;
             fixture.detectChanges();
             expect(element.queryAll(By.css('.comment-body button')).length).toEqual(0);
+            expect(element.queryAll(By.css('markdown-editor')).length).toEqual(1);
         });
     });
 });

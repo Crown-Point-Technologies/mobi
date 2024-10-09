@@ -6,7 +6,7 @@ package com.mobi.workflows.impl.dagu;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -70,4 +70,20 @@ public @interface DaguWorkflowEngineConfig {
      */
     @AttributeDefinition(defaultValue = "300")
     long pollTimeout() default 300;
+
+    /**
+     *  The username of the optional basic auth account configured on the DAGU server.
+     *
+     * @return A string representing the username to be used for basic auth on the DAGU server
+     */
+    @AttributeDefinition(name = "username", required = false)
+    String username();
+
+    /**
+     *  The password of the optional basic auth account configured on the DAGU server.
+     *
+     * @return A string representing the password to be used for basic auth on the DAGU server
+     */
+    @AttributeDefinition(name = "password", required = false)
+    String password();
 }

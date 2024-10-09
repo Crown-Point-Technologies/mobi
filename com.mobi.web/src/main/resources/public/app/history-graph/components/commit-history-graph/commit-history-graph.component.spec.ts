@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -24,11 +24,11 @@ import { DebugElement, SimpleChange } from '@angular/core';
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { By } from '@angular/platform-browser';
-import { GitgraphUserApi } from '@gitgraph/core';
+import { GitgraphUserApi } from '@sourceflow/gitgraph-core';
 import { MockProvider } from 'ng-mocks';
 import { of } from 'rxjs';
-import { GitgraphCommitOptions } from '@gitgraph/core';
-import { Branch as GitGraphBranch } from '@gitgraph/js';
+import { GitgraphCommitOptions } from '@sourceflow/gitgraph-core';
+import { Branch as GitGraphBranch } from '@sourceflow/gitgraph-js';
 
 import { CommitInfoOverlayComponent } from '../../../shared/components/commitInfoOverlay/commitInfoOverlay.component';
 import { Commit } from '../../../shared/models/commit.interface';
@@ -106,30 +106,30 @@ describe('CommitHistoryGraphComponent', () => {
       commitIri: commitId,
       title: 'tag1',
       description: ''
-    } as Tag;
+    };
     tag2 = {
       tagIri: 'urn:tag2',
       commitIri: commitId,
       title: 'tag2',
       description: ''
-    } as Tag;
+    };
     gitActions = [
       {
-        'action': 'create-branch',
-        'branch': 'HEAD'
+        action: 'create-branch',
+        branch: 'HEAD'
       },
       {
-        'action': 'commit',
-        'branch': 'HEAD',
-        'commit': commit,
+        action: 'commit',
+        branch: 'HEAD',
+        commit: commit,
       },
       {
-        'action': 'create-branch',
-        'branch': 'BRANCH-0001'
+        action: 'create-branch',
+        branch: 'BRANCH-0001'
       },
       {
-        'action': 'create-branch',
-        'branch': 'BRANCH-0002'
+        action: 'create-branch',
+        branch: 'BRANCH-0002'
       },
     ];
     component.tags = [tag1, tag2];
@@ -323,7 +323,7 @@ describe('CommitHistoryGraphComponent', () => {
         expect(gitgraphCommitOptions).toEqual({
           subject: 'message',
           hash: '1234567890',
-          author: 'user',
+          author: 'firstName lastName',
           tag: `${tag1.title} | ${tag2.title}`,
           renderDot: jasmine.any(Function),
           renderMessage: jasmine.any(Function),
@@ -347,7 +347,7 @@ describe('CommitHistoryGraphComponent', () => {
         fixture.detectChanges();
         await fixture.whenStable();
         expect(matDialogMock.open).toHaveBeenCalledWith(CommitInfoOverlayComponent, {
-            data: { commit: commit, ontRecordId: recordId, type: type }
+            data: { commit: commit, recordId: recordId, type: type }
         });
     });
     it('reset clears gitgraph and clears branches', async function() {

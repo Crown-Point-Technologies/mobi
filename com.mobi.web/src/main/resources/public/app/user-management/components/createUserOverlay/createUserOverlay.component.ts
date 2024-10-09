@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -26,10 +26,10 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { map } from 'lodash';
 
 import { REGEX } from '../../../constants';
-import { User } from '../../../shared/models/user.interface';
 import { UserManagerService } from '../../../shared/services/userManager.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { uniqueValue } from '../../../shared/validators/uniqueValue.validator';
+import { NewUserConfig } from '../../../shared/models/new-user-config';
 
 /**
  * @class user-management.CreateUserOverlayComponent
@@ -65,18 +65,18 @@ export class CreateUserOverlayComponent {
             this.createUserForm.controls.username.hasError('pattern') ? 'Invalid username' : '';
     }
     add(): void {
-        const newUser: User = {
+        const newUser: NewUserConfig = {
             roles: ['user'],
             username: this.createUserForm.controls.username.value,
             firstName: this.createUserForm.controls.firstName.value,
             lastName: this.createUserForm.controls.lastName.value,
             email: this.createUserForm.controls.email.value,
-            external: false
+            password: this.createUserForm.controls.unmaskPassword.value
         };
         if (this.createUserForm.controls.admin.value) {
             newUser.roles.push('admin');
         }
-        this.um.addUser(newUser, this.createUserForm.controls.unmaskPassword.value)
+        this.um.addUser(newUser)
             .subscribe(() => {
                 this.toast.createSuccessToast('User successfully created');
                 this.errorMessage = '';

@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -39,7 +39,7 @@ import { By } from '@angular/platform-browser';
 
 import {
     cleanStylesFromDOM, DATE_STR, SHORT_DATE_STR,
-} from '../../../../../public/test/ts/Shared';
+} from '../../../../test/ts/Shared';
 import { ConfirmModalComponent } from '../../../shared/components/confirmModal/confirmModal.component';
 import { InfoMessageComponent } from '../../../shared/components/infoMessage/infoMessage.component';
 import { ProgressSpinnerService } from '../../../shared/components/progress-spinner/services/progressSpinner.service';
@@ -48,6 +48,7 @@ import { MapperStateService } from '../../../shared/services/mapperState.service
 import { MappingManagerService } from '../../../shared/services/mappingManager.service';
 import { ViewMappingModalComponent } from '../viewMappingModal/viewMappingModal.component';
 import { CreateMappingOverlayComponent } from '../createMappingOverlay/createMappingOverlay.component';
+import { IncompatibleWarningModalComponent } from '../incompatible-warning-modal/incompatible-warning-modal.component';
 import { DownloadMappingOverlayComponent } from '../downloadMappingOverlay/downloadMappingOverlay.component';
 import { CATALOG, DCTERMS, DELIM, POLICY, RDF } from '../../../prefixes';
 import { JSONLDObject } from '../../../shared/models/JSONLDObject.interface';
@@ -60,6 +61,7 @@ import { SearchBarComponent } from '../../../shared/components/searchBar/searchB
 import { PolicyEnforcementService } from '../../../shared/services/policyEnforcement.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { MappingSelectPageComponent } from './mappingSelectPage.component';
+import { MatTooltipModule } from "@angular/material/tooltip";
 
 describe('Mapping Select Page component', function() {
     let component: MappingSelectPageComponent;
@@ -102,8 +104,8 @@ describe('Mapping Select Page component', function() {
     const headers = {'x-total-count': '' + totalSize};
      
     beforeEach(async () => {
-        await TestBed.configureTestingModule({
-            imports: [ 
+        TestBed.configureTestingModule({
+            imports: [
                 NoopAnimationsModule,
                 FormsModule,
                 ReactiveFormsModule,
@@ -113,12 +115,14 @@ describe('Mapping Select Page component', function() {
                 MatMenuModule,
                 MatPaginatorModule,
                 MatDividerModule,
-                MatIconModule
-             ],
+                MatIconModule,
+                MatTooltipModule
+            ],
             declarations: [
                 MappingSelectPageComponent,
                 MockComponent(ViewMappingModalComponent),
                 MockComponent(CreateMappingOverlayComponent),
+                MockComponent(IncompatibleWarningModalComponent),
                 MockComponent(DownloadMappingOverlayComponent),
                 MockComponent(ConfirmModalComponent),
                 MockComponent(InfoMessageComponent),
@@ -132,9 +136,11 @@ describe('Mapping Select Page component', function() {
                 MockProvider(ProgressSpinnerService),
                 MockProvider(PolicyEnforcementService),
                 MockProvider(ToastService),
-                { provide: MatDialog, useFactory: () => jasmine.createSpyObj('MatDialog', {
-                    open: { afterClosed: () => of(true)}
-                }) }
+                {
+                    provide: MatDialog, useFactory: () => jasmine.createSpyObj('MatDialog', {
+                        open: {afterClosed: () => of('edit')}
+                    })
+                }
             ]
         });
     });
@@ -273,7 +279,7 @@ describe('Mapping Select Page component', function() {
             it('successfully', fakeAsync(function() {
                 const mappedColumns = ['A'];
                 mapperStateStub.getMappedColumns.and.returnValue(mappedColumns);
-                spyOn(component, 'setStateIfCompatible').and.returnValue(of(null));
+                spyOn(component, 'setStateIfCompatible').and.returnValue(of('default'));
                 component.run(mappingRecord);
                 tick();
                 expect(mapperStateStub.getMappedColumns).toHaveBeenCalledWith();
@@ -297,7 +303,7 @@ describe('Mapping Select Page component', function() {
                 mapperStateStub.editMapping = false;
             });
             it('if the user has permission', fakeAsync(function() {
-                spyOn(component, 'setStateIfCompatible').and.returnValue(of(null));
+                spyOn(component, 'setStateIfCompatible').and.returnValue(of('default'));
                 component.edit(mappingRecord);
                 tick();
                 expect(policyEnforcementStub.evaluateRequest).toHaveBeenCalledWith({resourceId: recordId, actionId: `${CATALOG}Modify`, actionAttrs: { [`${CATALOG}branch`]: branchId}});
@@ -308,7 +314,7 @@ describe('Mapping Select Page component', function() {
                 expect(toastStub.createErrorToast).not.toHaveBeenCalled();
             }));
             it('unless the user does not have permission', fakeAsync(function() {
-                spyOn(component, 'setStateIfCompatible').and.returnValue(of(null));
+                spyOn(component, 'setStateIfCompatible').and.returnValue(of('default'));
                 policyEnforcementStub.evaluateRequest.and.returnValue(of(policyEnforcementStub.deny));
                 component.edit(mappingRecord);
                 tick();
@@ -380,7 +386,7 @@ describe('Mapping Select Page component', function() {
         });
         describe('should set the correct state for duplicating a mapping', function() {
             it('if the user has permission', fakeAsync(function() {
-                spyOn(component, 'setStateIfCompatible').and.returnValue(of(null));
+                spyOn(component, 'setStateIfCompatible').and.returnValue(of('default'));
                 component.duplicate(mappingRecord);
                 tick();
                 expect(policyEnforcementStub.evaluateRequest).toHaveBeenCalledWith({resourceId: catalogId, actionId: `${POLICY}Create`, actionAttrs: { [`${RDF}type`]: `${DELIM}MappingRecord`}});
@@ -391,7 +397,7 @@ describe('Mapping Select Page component', function() {
                 expect(toastStub.createErrorToast).not.toHaveBeenCalled();
             }));
             it('unless the user does not have permission', fakeAsync(function() {
-                spyOn(component, 'setStateIfCompatible').and.returnValue(of(null));
+                spyOn(component, 'setStateIfCompatible').and.returnValue(of('default'));
                 policyEnforcementStub.evaluateRequest.and.returnValue(of(policyEnforcementStub.deny));
                 component.duplicate(mappingRecord);
                 tick();
@@ -464,13 +470,11 @@ describe('Mapping Select Page component', function() {
             it('unless the mapping is not compatible with the source ontologies', fakeAsync(function() {
                 mapperStateStub.findIncompatibleMappings.and.returnValue(of([{'@id': 'incomMapping'}]));
                 component.setStateIfCompatible(mappingRecord)
-                    .subscribe(() => fail('Observable should have rejected'), response => {
-                        expect(response).toEqual(null);
-                    });
+                    .subscribe( response => {expect(response).toEqual('edit'); });
                 tick();
+                expect(matDialog.open).toHaveBeenCalledWith(IncompatibleWarningModalComponent, {data: {mappingRecord: mappingRecord, incomMappings: [{'@id': 'incomMapping'}]}});
                 expect(mapperStateStub.findIncompatibleMappings).toHaveBeenCalledWith(mappingState.mapping);
-                expect(mapperStateStub.selected).toBeUndefined();
-                expect(toastStub.createErrorToast).toHaveBeenCalledWith(jasmine.any(String), {timeOut: jasmine.any(Number)});
+                expect(mapperStateStub.selected).toEqual(mappingState);
             }));
             it('successfully', fakeAsync(function() {
                 mapperStateStub.findIncompatibleMappings.and.returnValue(of([]));
@@ -526,6 +530,24 @@ describe('Mapping Select Page component', function() {
             const button = element.queryAll(By.css('button.new-button'))[0];
             button.triggerEventHandler('click', null);
             expect(component.showNew).toHaveBeenCalledWith();
+        });
+        describe('with button to create a new mapping', function() {
+            it('when user can create', function() {
+                component.canCreate = true;
+                fixture.detectChanges();
+                const buttons = element.queryAll(By.css('.search-form button'));
+                expect(buttons.length).toEqual(1);
+                expect(buttons[0].nativeElement.disabled).toBeFalse();
+                expect(buttons[0].nativeElement.textContent.trim()).toEqual('New Mapping');
+            });
+            it('when user cannot create', function() {
+                policyEnforcementStub.evaluateRequest.and.returnValue(of(policyEnforcementStub.deny));
+                fixture.detectChanges();
+                const buttons = element.queryAll(By.css('.search-form button'));
+                expect(buttons.length).toEqual(1);
+                expect(buttons[0].nativeElement.disabled).toBeTrue();
+                expect(buttons[0].nativeElement.textContent.trim()).toEqual('New Mapping');
+            });
         });
     });
     describe('menu button', function() {

@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -28,8 +28,9 @@ import { MockProvider } from 'ng-mocks';
 import { of, throwError } from 'rxjs';
 
 import { cleanStylesFromDOM } from '../../../test/ts/Shared';
+import { FOAF, USER } from '../../prefixes';
 import { ProgressSpinnerService } from '../components/progress-spinner/services/progressSpinner.service';
-import { User } from '../models/user.interface';
+import { User } from '../models/user.class';
 import { CatalogManagerService } from './catalogManager.service';
 import { CatalogStateService } from './catalogState.service';
 import { DatasetManagerService } from './datasetManager.service';
@@ -46,8 +47,8 @@ import { UserManagerService } from './userManager.service';
 import { UserStateService } from './userState.service';
 import { ToastService } from './toast.service';
 import { YasguiService } from './yasgui.service';
-import { LoginManagerService } from './loginManager.service';
 import { ProvManagerService } from './provManager.service';
+import { LoginManagerService } from './loginManager.service';
 
 describe('Login Manager service', function() {
     let service: LoginManagerService;
@@ -72,15 +73,14 @@ describe('Login Manager service', function() {
     let provManagerStub: jasmine.SpyObj<ProvManagerService>;
 
     const error = 'Error Message';
-    const user: User = {
-        iri: 'userIRI',
-        username: 'user',
-        external: false,
-        firstName: 'User',
-        lastName: 'User',
-        email: 'email@email.com',
-        roles: []
-    };
+    const user: User = new User({
+        '@id': 'userIRI',
+        '@type': [`${USER}User`],
+        [`${USER}username`]: [{ '@value': 'user' }],
+        [`${FOAF}firstName`]: [{ '@value': 'User' }],
+        [`${FOAF}lastName`]: [{ '@value': 'User' }],
+        [`${FOAF}mbox`]: [{ '@id': 'email@email.com' }],
+    });
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
@@ -218,6 +218,12 @@ describe('Login Manager service', function() {
         }));
     });
     it('should log a user out', function() {
+        service.currentUserIRI = 'urn:userIri';
+        service.currentUser = 'username';
+        const sub = service.loginManagerAction$.subscribe((event) => {
+            expect(event.eventType).toEqual('LOGOUT');
+            expect(event.payload).toEqual({currentUserIRI: 'urn:userIri', currentUser: 'username'});
+        }, () => fail('Observable should have resolved'));
         service.logout();
 
         const request = httpMock.expectOne(req => req.url === service.prefix && req.method === 'DELETE');
@@ -239,6 +245,7 @@ describe('Login Manager service', function() {
         expect(service.currentUserIRI).toBe('');
         expect(router.navigate).toHaveBeenCalledWith(['/login']);
         expect(service.weGood).toBe(false);
+        sub.unsubscribe();
     });
     describe('should get the current login', function() {
         it('unless an error occurs', function() {

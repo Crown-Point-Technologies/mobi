@@ -4,7 +4,7 @@
  *  $Id:$
  *  $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -27,6 +27,8 @@ export class EventTypeConstants {
     static EVENT_BRANCH_REMOVAL = 'EVENT_BRANCH_REMOVAL';
     // Event on merge request acceptance (IRI of the record being accepted and the target branch IRI)
     static EVENT_MERGE_REQUEST_ACCEPTED = 'EVENT_MERGE_REQUEST_ACCEPTED';
+    // Event on merge request closure
+    static EVENT_MERGE_REQUEST_CLOSED = 'EVENT_MERGE_REQUEST_CLOSED';
 }
 
 export interface EventWithPayload {

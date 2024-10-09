@@ -6,7 +6,7 @@ package com.mobi.workflows.api;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -27,18 +27,36 @@ import com.mobi.ontologies.provo.Activity;
 import com.mobi.prov.api.ProvenanceService;
 import com.mobi.vfs.ontologies.documents.BinaryFile;
 import com.mobi.workflows.api.ontologies.workflows.WorkflowExecutionActivity;
+import org.eclipse.rdf4j.model.Resource;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.event.Event;
+import org.osgi.service.event.EventAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
-public abstract class AbstractWorkflowEngine implements WorkflowEngine {
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+public abstract class AbstractWorkflowEngine implements WorkflowEngine {
     private final Logger log = LoggerFactory.getLogger(AbstractWorkflowEngine.class);
 
     @Reference
     public ProvenanceService provService;
+
+    protected static final List<Resource> executingWorkflows = new ArrayList<>();
+    protected static final String LOG_FILE_NAMESPACE = "https://mobi.solutions/workflows/log-files/";
+    protected static final String ACTION_EXECUTION_NAMESPACE = "https://mobi.solutions/workflows/ActionExecution/";
+
+    protected EventAdmin eventAdmin;
+
+    public List<Resource> getExecutingWorkflows() {
+        return executingWorkflows;
+    }
 
     protected void finalizeActivity(Activity activity) {
         activity.addEndedAtTime(OffsetDateTime.now());
@@ -50,7 +68,7 @@ public abstract class AbstractWorkflowEngine implements WorkflowEngine {
         }
     }
 
-    public void endExecutionActivity(WorkflowExecutionActivity executionActivity, BinaryFile logs,
+    protected void endExecutionActivity(WorkflowExecutionActivity executionActivity, BinaryFile logs,
                                         boolean succeeded) {
         if (logs != null) {
             executionActivity.addLogs(logs);
@@ -58,5 +76,32 @@ public abstract class AbstractWorkflowEngine implements WorkflowEngine {
         executionActivity.setSucceeded(succeeded);
         finalizeActivity(executionActivity);
         provService.updateActivity(executionActivity);
+        // Notify of activity end
+        Map<String, Object> eventProps = new HashMap<>();
+        eventProps.put(WorkflowsTopics.ACTIVITY_PROPERTY_ACTIVITY, executionActivity.getResource());
+        Event event = new Event(WorkflowsTopics.TOPIC_ACTIVITY_END, eventProps);
+        eventAdmin.postEvent(event);
+    }
+
+    protected static LocalDateTime verifyStartDate(LocalDateTime priorValue, LocalDateTime newValue) {
+        if (priorValue == null && newValue != null) {
+            return newValue;
+        } else if (priorValue != null && newValue != null) {
+            if (newValue.isBefore(priorValue)) {
+                return newValue;
+            }
+        }
+        return priorValue;
+    }
+
+    protected static LocalDateTime verifyStopDate(LocalDateTime priorValue, LocalDateTime newValue) {
+        if (priorValue == null && newValue != null) {
+            return newValue;
+        } else if (priorValue != null && newValue != null) {
+            if (newValue.isAfter(priorValue)) {
+                return newValue;
+            }
+        }
+        return priorValue;
     }
 }

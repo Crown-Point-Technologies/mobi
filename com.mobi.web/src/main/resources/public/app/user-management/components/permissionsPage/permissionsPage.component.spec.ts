@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -31,10 +31,10 @@ import { MockComponent, MockProvider } from 'ng-mocks';
 import { of, throwError } from 'rxjs';
 
 import { cleanStylesFromDOM } from '../../../../../public/test/ts/Shared';
-import { USER, XSD } from '../../../prefixes';
+import { FOAF, USER, XSD } from '../../../prefixes';
 import { UserAccessControlsComponent } from '../../../shared/components/userAccessControls/userAccessControls.component';
 import { Group } from '../../../shared/models/group.interface';
-import { User } from '../../../shared/models/user.interface';
+import { User } from '../../../shared/models/user.class';
 import { CatalogManagerService } from '../../../shared/services/catalogManager.service';
 import { PolicyManagerService } from '../../../shared/services/policyManager.service';
 import { UserManagerService } from '../../../shared/services/userManager.service';
@@ -128,15 +128,13 @@ describe('Permissions Page component', function() {
             MatchId: policyManagerStub.stringEqual
         };
 
-        user = {
-            iri: 'user1',
-            username: 'user1',
-            firstName: 'User',
-            lastName: '1',
-            email: '',
-            roles: [],
-            external: false
-        };
+        user = new User({
+          '@id': 'user1',
+          '@type': [`${USER}User`],
+          [`${USER}username`]: [{ '@value': 'user1' }],
+          [`${FOAF}firstName`]: [{ '@value': 'User' }],
+          [`${FOAF}lastName`]: [{ '@value': '1' }],
+        });
         userManagerStub.users = [user];
         group = {
             iri: 'group1',

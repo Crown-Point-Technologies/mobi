@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -984,5 +984,39 @@ describe('Prop Mapping Overlay component', function() {
         submitButton.triggerEventHandler('click', null);
         fixture.detectChanges();
         expect(component.addProp).toHaveBeenCalledWith();
+    });
+
+    describe('if the property has ranges set for property validation', function() {
+        beforeEach(function() {
+            component.selectedProp = mappingProperty;
+            mappingStub.getClassMappingsByClassId.and.returnValue([classMapping]);
+            mapperStateStub.retrieveSpecificClasses.and.returnValue(of([mappingClass]));
+        });
+
+        it('should account for when there are no range class options found', fakeAsync(function() {
+            const mappingPropertyClone = cloneDeep(mappingProperty);
+            mappingPropertyClone.ranges = [];
+            component.selectedProp = mappingPropertyClone;
+            component.setRangeClass();
+        
+            fixture.detectChanges();
+            tick();
+
+            expect(component.rangeClasses).toBe(undefined);
+            expect(component.propMappingForm.controls.rangeClass.invalid).toBe(true);
+        }));
+        
+        it('should account for when there are some range class options found', fakeAsync(function() {
+            const mappingPropertyClone = cloneDeep(mappingProperty);
+            mappingPropertyClone.ranges = [`${XSD}boolean`, `${XSD}string`];
+            component.selectedProp = mappingPropertyClone;
+            component.setRangeClass();
+        
+            fixture.detectChanges();
+            tick();
+            
+            expect(component.rangeClasses).not.toBe(undefined);
+            expect(component.propMappingForm.controls.rangeClass.valid).toBe(true);
+        }));
     });
 });

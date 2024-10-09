@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -26,6 +26,7 @@ import { switchMap } from 'rxjs/operators';
 import { MergeRequest } from '../../../shared/models/mergeRequest.interface';
 import { MergeRequestManagerService } from '../../../shared/services/mergeRequestManager.service';
 import { ToastService } from '../../../shared/services/toast.service';
+import { MergeRequestStatus } from '../../../shared/models/merge-request-status';
 
 /**
  * @class merge-requests.MergeRequestDiscussionComponent
@@ -44,13 +45,16 @@ import { ToastService } from '../../../shared/services/toast.service';
 })
 export class MergeRequestDiscussionComponent {
     newComment = '';
-    isAccepted = false;
+    requestStatus: MergeRequestStatus = 'open';
+    editInProgress: false;
 
     private _request: MergeRequest;
+    isEditable = false;
 
     @Input() set request(value: MergeRequest) {
         this._request = value;
-        this.isAccepted = this.mm.isAccepted(this.request.jsonld);
+        this.requestStatus = this.mm.requestStatus(this.request.jsonld);
+        this.isEditable = this.requestStatus !== 'accepted';
     }
 
     get request(): MergeRequest {
@@ -85,5 +89,22 @@ export class MergeRequestDiscussionComponent {
                 this.request.comments = comments;
                 this.requestChange.emit(this.request);
             }, error => this.toast.createErrorToast(error));
+    }
+
+    /**
+     * Edits a comment and refreshes the request discussion to show the updates.
+     *
+     * @param {string} editDetails.mergeRequestId - The ID of the merge request.
+     * @param {string} editDetails.commentId - The ID of the comment.
+     * @param {string} editDetails.newComment - The new comment to replace the original comment.
+     * @returns void
+     */
+    editComment(editDetails: {[key: string]: string}): void {
+        this.mm.updateComment(editDetails.mergeRequestId, editDetails.commentId, editDetails.newComment).pipe(
+            switchMap(() => this.mm.getComments(this.request.jsonld['@id']))
+        ).subscribe(comments => {
+                this.request.comments = comments;
+                this.requestChange.emit(this.request);
+        }, error => this.toast.createErrorToast(error));
     }
 }

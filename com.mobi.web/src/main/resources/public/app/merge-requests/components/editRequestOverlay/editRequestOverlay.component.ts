@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -34,6 +34,7 @@ import { MergeRequestsStateService } from '../../../shared/services/mergeRequest
 import { UserManagerService } from '../../../shared/services/userManager.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { updateDctermsValue } from '../../../shared/utility';
+import { User } from '../../../shared/models/user.class';
 
 /**
  * @name merge-requests.EditRequestOverlayComponent
@@ -51,7 +52,7 @@ import { updateDctermsValue } from '../../../shared/utility';
 export class EditRequestOverlayComponent implements OnInit {
     branches = [];
     errorMessage = '';
-    assignees: string[] = [];
+    assignees: User[] = [];
     targetBranch: JSONLDObject;
     editRequestForm: UntypedFormGroup;
 
@@ -87,7 +88,7 @@ export class EditRequestOverlayComponent implements OnInit {
             }, error => this.errorMessage = error);
     }
 
-    private _initRequestConfig() {
+    private _initRequestConfig(): void {
         this.editRequestForm = this.fb.group({
             title: [this.state.selected.title, [ Validators.required ]],
             description: [this.state.selected.description === 'No description' ? '' : this.state.selected.description],
@@ -98,7 +99,7 @@ export class EditRequestOverlayComponent implements OnInit {
 
         this.assignees = this.state.selected.assignees;
     }
-    private _getMergeRequestJson() {
+    private _getMergeRequestJson(): JSONLDObject {
         const jsonld = Object.assign({}, this.state.selected.jsonld);
 
         updateDctermsValue(jsonld, 'title', this.editRequestForm.controls.title.value);
@@ -108,11 +109,8 @@ export class EditRequestOverlayComponent implements OnInit {
         jsonld[`${MERGEREQ}removeSource`] = [{'@type': `${XSD}boolean`, '@value': this.editRequestForm.controls.removeSource.value.toString()}];
 
         jsonld[`${MERGEREQ}assignee`] = [];
-        this.assignees.forEach(username => {
-            const user = this.um.users.find(user => user.username === username);
-            if (user) {
-                jsonld[`${MERGEREQ}assignee`].push({'@id': user.iri});
-            }
+        this.assignees.forEach(user => {
+            jsonld[`${MERGEREQ}assignee`].push({'@id': user.iri});
         });
         return jsonld;
     }

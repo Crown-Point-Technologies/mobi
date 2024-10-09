@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -34,12 +34,12 @@ import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MockComponent, MockProvider } from 'ng-mocks';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 
 import {
     cleanStylesFromDOM
 } from '../../../../../public/test/ts/Shared';
-import { DCTERMS } from '../../../prefixes';
+import { DCTERMS, USER } from '../../../prefixes';
 import { ConfirmModalComponent } from '../../../shared/components/confirmModal/confirmModal.component';
 import { InfoMessageComponent } from '../../../shared/components/infoMessage/infoMessage.component';
 import { MergeRequest } from '../../../shared/models/mergeRequest.interface';
@@ -49,8 +49,9 @@ import { MergeRequestFilterComponent } from '../merge-request-filter/merge-reque
 import { MergeRequestManagerService } from '../../../shared/services/mergeRequestManager.service';
 import { SortOption } from '../../../shared/models/sortOption.interface';
 import { ToastService } from '../../../shared/services/toast.service';
-import { MergeRequestListComponent } from './mergeRequestList.component';
 import { RecordIconComponent } from '../../../shared/components/recordIcon/recordIcon.component';
+import { User } from '../../../shared/models/user.class';
+import { MergeRequestListComponent } from './mergeRequestList.component';
 
 describe('Merge Request List component', function() {
     let component: MergeRequestListComponent;
@@ -60,11 +61,19 @@ describe('Merge Request List component', function() {
     let mergeRequestsManagerStub: jasmine.SpyObj<MergeRequestManagerService>;
     let matDialog: jasmine.SpyObj<MatDialog>;
 
+    const creatorUserId = 'urn://test/user/creator-user-1';
+    const creatorUsername = 'creator';
+    const creator: User = new User({
+        '@id': creatorUserId,
+        '@type': [`${USER}User`],
+        [`${USER}username`]: [{ '@value': creatorUsername }],
+        [`${USER}hasUserRole`]: [],
+    });
     const request: MergeRequest = {
         title: '',
         recordIri: '',
         date: '',
-        creator: '',
+        creator: creator,
         assignees: [],
         jsonld: {'@id': ''}
     };
@@ -163,8 +172,8 @@ describe('Merge Request List component', function() {
         it('should handle changing a filter', function() {
             spyOn(component, 'loadRequests');
             mergeRequestsStateStub.currentRequestPage = 1;
-            component.changeFilter({ requestStatus: true, creators: ['A', 'B'], assignees: ['Y', 'Z'], records: ['C', 'D'] });
-            expect(mergeRequestsStateStub.acceptedFilter).toBeTrue();
+            component.changeFilter({ requestStatus: 'accepted', creators: ['A', 'B'], assignees: ['Y', 'Z'], records: ['C', 'D'] });
+            expect(mergeRequestsStateStub.acceptedFilter).toBe('accepted');
             expect(mergeRequestsStateStub.creators).toEqual(['A', 'B']);
             expect(mergeRequestsStateStub.assignees).toEqual(['Y', 'Z']);
             expect(mergeRequestsStateStub.records).toEqual(['C', 'D']);
@@ -194,12 +203,12 @@ describe('Merge Request List component', function() {
                 pageIndex: mergeRequestsStateStub.currentRequestPage,
                 limit: mergeRequestsStateStub.requestLimit,
                 sortOption: mergeRequestsStateStub.requestSortOption,
-                accepted: mergeRequestsStateStub.acceptedFilter,
+                requestStatus: mergeRequestsStateStub.acceptedFilter,
                 searchText: mergeRequestsStateStub.requestSearchText,
                 creators: mergeRequestsStateStub.creators,
                 assignees: mergeRequestsStateStub.assignees,
                 records: mergeRequestsStateStub.records
-            });
+            }, jasmine.any(Subject));
         });
         it('should show the delete confirmation overlay', fakeAsync(function() {
             spyOn(component, 'loadRequests');
@@ -246,7 +255,18 @@ describe('Merge Request List component', function() {
             expect(listItems.length).toEqual(1);
             expect(listItems[0].nativeElement.innerHTML).toContain('None specified');
 
-            copyRequest.assignees = ['userA', 'userB'];
+            copyRequest.assignees = [
+                new User({
+                    '@id': 'userA',
+                    '@type': [`${USER}User`],
+                    [`${USER}username`]: [{ '@value': 'userA' }]
+                }),
+                new User({
+                    '@id': 'userB',
+                    '@type': [`${USER}User`],
+                    [`${USER}username`]: [{ '@value': 'userB' }]
+                })
+            ];
             fixture.detectChanges();
             expect(element.queryAll(By.css('.request .assignees li')).length).toEqual(copyRequest.assignees.length);
         });

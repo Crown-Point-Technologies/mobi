@@ -69,6 +69,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -197,8 +198,9 @@ public class ShapesGraphRest {
             },
             requestBody = @RequestBody(
                     content = {
-                            @Content(mediaType = MediaType.MULTIPART_FORM_DATA,
-                                    schema = @Schema(implementation = ShapesGraphFileUpload.class)
+                            @Content(mediaType = MediaType.MULTIPART_FORM_DATA, encoding = {
+                                    @Encoding(name = "keywords", explode = true)
+                                }, schema = @Schema(implementation = ShapesGraphFileUpload.class)
                             )
                     }
             )
@@ -207,7 +209,7 @@ public class ShapesGraphRest {
     @ActionAttributes(@AttributeValue(id = com.mobi.ontologies.rdfs.Resource.type_IRI, value = ShapesGraphRecord.TYPE))
     @ResourceId("http://mobi.com/catalog-local")
     public Response uploadFile(@Context HttpServletRequest servletRequest) {
-        Map<String, List<Class>> fields = new HashMap<>();
+        Map<String, List<Class<?>>> fields = new HashMap<>();
         fields.put("title", Stream.of(String.class).collect(Collectors.toList()));
         fields.put("description", Stream.of(String.class).collect(Collectors.toList()));
         fields.put("json", Stream.of(String.class).collect(Collectors.toList()));
@@ -487,7 +489,7 @@ public class ShapesGraphRest {
             @QueryParam("commitId") String commitIdStr,
             @Parameter(description = "Boolean representing whether the in progress commit should be overwritten")
             @DefaultValue("false") @QueryParam("replaceInProgressCommit") boolean replaceInProgressCommit) {
-        Map<String, List<Class>> fields = new HashMap<>();
+        Map<String, List<Class<?>>> fields = new HashMap<>();
         fields.put("json", Stream.of(String.class).collect(Collectors.toList()));
 
         Map<String, Object> formData = RestUtils.getFormData(servletRequest, fields);
@@ -567,7 +569,7 @@ public class ShapesGraphRest {
 
             Resource inProgressCommitIRI = getInProgressCommitIRI(user, recordId, conn);
             commitManager.updateInProgressCommit(catalogIRI, recordId, inProgressCommitIRI,
-                    BNodeUtils.restoreBNodes(diff.getAdditions(), uploadedBNodes, mf),
+                    BNodeUtils.restoreBNodes(diff.getAdditions(), uploadedBNodes, catalogBNodes, mf),
                     BNodeUtils.restoreBNodes(diff.getDeletions(), catalogBNodes, mf), conn);
 
             return Response.ok().build();

@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -39,8 +39,8 @@ import { OntologyManagerService } from '../../services/ontologyManager.service';
 import { JSONLDObject } from '../../models/JSONLDObject.interface';
 import { ToastService } from '../../services/toast.service';
 import { Commit } from '../../models/commit.interface';
-import { CommitInfoOverlayComponent } from './commitInfoOverlay.component';
 import { ONTOLOGYEDITOR } from '../../../prefixes';
+import { CommitInfoOverlayComponent } from './commitInfoOverlay.component';
 
 describe('Commit Info Overlay component', function() {
     let component: CommitInfoOverlayComponent;
@@ -54,9 +54,9 @@ describe('Commit Info Overlay component', function() {
     let headers;
     
     const commitId = 'commitId';
-    const ontRecordId = 'ontRecordId';
+    const recordId = 'recordId';
     const emptyObj: JSONLDObject = {'@id': '', '@type': []};
-    const data: {commit: Commit, ontRecordId: string, type: string} = {
+    const data: {commit: Commit, recordId: string, type: string} = {
         commit: {
             id: commitId,
             condensedId: commitId,
@@ -66,8 +66,8 @@ describe('Commit Info Overlay component', function() {
             base: '',
             auxiliary: ''
         },
-        ontRecordId,
-        type: ONTOLOGYEDITOR + 'OntologyRecord'
+        recordId,
+        type: `${ONTOLOGYEDITOR}OntologyRecord`
     };
 
     beforeEach(async () => {
@@ -168,7 +168,7 @@ describe('Commit Info Overlay component', function() {
                     data.commit = {'@id': commitId, '@type': []};
                     catalogManagerStub.getDifference.and.returnValue(of(new HttpResponse<CommitDifference>({body: data, headers: new HttpHeaders(headers)})));
                 });
-                describe('and resolve.ontRecordId is set', function() {
+                describe('and resolve.recordId is set', function() {
                     beforeEach( async function() {
                         component.data = {
                             commit: {
@@ -179,7 +179,7 @@ describe('Commit Info Overlay component', function() {
                                 base: '',
                                 auxiliary: ''
                             },
-                            ontRecordId: 'recordId',
+                            recordId: 'recordId',
                             type: ONTOLOGYEDITOR + 'OntologyRecord'
                         };
                         fixture.detectChanges();
@@ -217,7 +217,7 @@ describe('Commit Info Overlay component', function() {
                             base: '',
                             auxiliary: ''
                         },
-                        ontRecordId: '',
+                        recordId: '',
                         type: ''
                     };
                     expect(component.additions).toEqual([]);
@@ -243,7 +243,7 @@ describe('Commit Info Overlay component', function() {
                         base: '',
                         auxiliary: ''
                     },
-                    ontRecordId: '',
+                    recordId: '',
                     type: ''
                 };
                 fixture.detectChanges();
@@ -257,7 +257,7 @@ describe('Commit Info Overlay component', function() {
         });
         describe('getEntityName returns when the calculated entityName', function() {
             it('exists', function() {
-                component.entityNames['iri'] = {label: 'iriLabel'};
+                component.entityNames['iri'] = {label: 'iriLabel', names: []};
                 expect(component.getEntityName('iri')).toEqual('iriLabel');
             });
             it('does not exist', function() {

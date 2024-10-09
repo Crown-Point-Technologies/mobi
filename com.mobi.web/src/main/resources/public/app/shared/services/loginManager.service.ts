@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -23,7 +23,7 @@
 
 import { catchError, map, mergeMap, switchMap, tap } from 'rxjs/operators';
 import { get } from 'lodash';
-import { forkJoin, from, Observable, of, throwError } from 'rxjs';
+import { forkJoin, from, Observable, of, Subject, throwError } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -47,6 +47,7 @@ import { REST_PREFIX } from '../../constants';
 import { ToastService } from './toast.service';
 import { ProvManagerService } from './provManager.service';
 import { createHttpParams } from '../utility';
+import { EventWithPayload } from '../models/eventWithPayload.interface';
 
 /**
  * @class shared.LoginManagerService
@@ -57,6 +58,9 @@ import { createHttpParams } from '../utility';
 export class LoginManagerService {
     prefix = `${REST_PREFIX}session`;
     weGood = false;
+
+    private _loginManagerActionSubject = new Subject<EventWithPayload>();
+    public loginManagerAction$ = this._loginManagerActionSubject.asObservable();
 
     constructor(private http: HttpClient, private router: Router,
         private cm: CatalogManagerService,
@@ -126,24 +130,28 @@ export class LoginManagerService {
      * the login page.
      */
     logout(): void {
-        this.weGood = false;
-        this.ds.reset();
-        this.dlm.reset();
-        this.dis.reset();
-        this.ms.initialize();
-        this.ms.resetEdit();
-        this.mrs.reset();
-        this.os.reset();
-        this.sgs.reset();
-        this.cs.reset();
-        this.yasgui.reset();
-        this.prov.reset();
-        this.http.delete(this.prefix)
-            .subscribe(() => {
+      this.weGood = false;
+      this.http.delete(this.prefix)
+          .subscribe(() => {
+                this._loginManagerActionSubject.next({eventType: 'LOGOUT', payload: {
+                    currentUserIRI: this.currentUserIRI,
+                    currentUser: this.currentUser
+                }});
                 this.currentUser = '';
                 this.currentUserIRI = '';
                 this.us.reset();
                 this.router.navigate(['/login']);
+                this.ds.reset();
+                this.dlm.reset();
+                this.dis.reset();
+                this.ms.initialize();
+                this.ms.resetEdit();
+                this.mrs.reset();
+                this.os.reset();
+                this.sgs.reset();
+                this.cs.reset();
+                this.yasgui.reset();
+                this.prov.reset();
             });
     }
 

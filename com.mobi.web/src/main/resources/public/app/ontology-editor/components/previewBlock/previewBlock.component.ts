@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -31,7 +31,7 @@ import { OntologyManagerService } from '../../../shared/services/ontologyManager
  *
  * A component that creates a `mat-card` that displays a `codemirror` with the current
  * {@link shared.OntologyStateService#listItem selected ontology} in a specified RDF format. The card contains a
- * {@link ontology-editor.SerializationSelectComponent}, button to refresh the preview, and a button for downloading
+ * {@link shared.SerializationSelectComponent}, button to refresh the preview, and a button for downloading
  * the ontology in the selected format.
  */
 @Component({
@@ -83,14 +83,6 @@ export class PreviewBlockComponent implements OnInit, OnChanges {
                 this.activePage.preview = response;
                 this.activePageChange.emit(this.activePage);
             });
-    }
-    download(): void {
-        const fileName = this.os.listItem.versionedRdfRecord.title.replace(/[ &/\\#,+()$~%.'":*?<>{}]/g, '');
-        this.om.downloadOntology(this.os.listItem.versionedRdfRecord.recordId, 
-            this.os.listItem.versionedRdfRecord.branchId, 
-            this.os.listItem.versionedRdfRecord.commitId, 
-            this.activePage.serialization, 
-            fileName);
     }
 
     private _setMode(serialization) {

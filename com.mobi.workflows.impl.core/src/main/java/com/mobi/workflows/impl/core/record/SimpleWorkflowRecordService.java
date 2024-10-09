@@ -6,7 +6,7 @@ package com.mobi.workflows.impl.core.record;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -25,7 +25,6 @@ package com.mobi.workflows.impl.core.record;
 
 import com.mobi.catalog.api.record.RecordService;
 import com.mobi.exception.MobiException;
-import com.mobi.ontologies.provo.Activity;
 import com.mobi.persistence.utils.Bindings;
 import com.mobi.platform.config.api.ontologies.platformconfig.State;
 import com.mobi.platform.config.api.ontologies.platformconfig.StateFactory;

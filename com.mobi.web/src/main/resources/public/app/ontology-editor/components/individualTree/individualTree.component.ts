@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -158,7 +158,7 @@ export class IndividualTreeComponent implements OnInit, OnChanges, OnDestroy, Af
     toggleOpen(node: HierarchyNode): void {
         node.isOpened = !node.isOpened;
         if (node.title) {
-            node.set(this.os.listItem.versionedRdfRecord.recordId, node.isOpened);
+            node.set(node.isOpened);
         }
         node.isOpened ? this.os.listItem.editorTabStates[this.activeTab].open[node.joinedPath] = true : delete this.os.listItem.editorTabStates[this.activeTab].open[node.joinedPath];
         this.filteredHierarchy = filter(this.preFilteredHierarchy, node => this.isShown(node));

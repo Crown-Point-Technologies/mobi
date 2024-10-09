@@ -226,7 +226,7 @@ public class CatalogRest {
             }
     )
     public Response getCatalogs(
-            @Parameter(description = "Optional Type of Catalog you want back (local or distributed)", required = false)
+            @Parameter(description = "Optional Type of Catalog you want back (local or distributed)")
             @QueryParam("type") String catalogType) {
         try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
             Set<Catalog> catalogs = new HashSet<>();
@@ -315,7 +315,8 @@ public class CatalogRest {
             tags = "catalogs",
             summary = "Retrieves the Records in the Catalog",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "List of Records that match the search criteria"),
+                    @ApiResponse(responseCode = "200", description = "List of Records that match the search criteria",
+                            content = @Content(schema = @Schema(ref = "#/components/schemas/JsonLdObjects"))),
                     @ApiResponse(responseCode = "400", description = "BAD REQUEST. The requested catalogId could not"
                             + " be found"),
                     @ApiResponse(responseCode = "403", description = "Permission Denied"),
@@ -344,9 +345,9 @@ public class CatalogRest {
                             "http://mobi.com/ontologies/dataset#DatasetRecord"},
                     required = true))
             @QueryParam("type") String recordType,
-            @Parameter(description = "List of keywords", required = false)
+            @Parameter(description = "List of keywords")
             @QueryParam("keywords") List<String> keywords,
-            @Parameter(description = "List of creator IRIs", required = false)
+            @Parameter(description = "List of creator IRIs")
             @QueryParam("creators") List<String> creators,
             @Parameter(description = "Offset for the page", required = true)
             @QueryParam("offset") int offset,
@@ -355,7 +356,7 @@ public class CatalogRest {
             @Parameter(description = "Whether or not the list should be sorted ascending or descending",
                     required = false)
             @DefaultValue("true") @QueryParam("ascending") boolean asc,
-            @Parameter(description = "String used to filter out Records", required = true)
+            @Parameter(description = "String used to filter out Records")
             @QueryParam("searchText") String searchText) {
         try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
             validatePaginationParams(sort, SORT_RESOURCES, limit, offset);
@@ -382,7 +383,7 @@ public class CatalogRest {
             }
             PaginatedSearchResults<Record> records = recordManager.findRecord(vf.createIRI(catalogId),
                     builder.build(), getActiveUser(servletRequest, engineManager), conn);
-            return createPaginatedResponseJackson(uriInfo, records.getPage(), records.getTotalSize(), limit, offset,
+            return createPaginatedResponse(uriInfo, records.getPage(), records.getTotalSize(), limit, offset,
                     Record.TYPE, bNodeService);
         } catch (IllegalArgumentException ex) {
             throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.BAD_REQUEST);
@@ -561,7 +562,7 @@ public class CatalogRest {
             @Context UriInfo uriInfo,
             @Parameter(description = "String representing the Catalog ID", required = true)
             @PathParam("catalogId") String catalogId,
-            @Parameter(description = "String used to filter out Keywords", required = false)
+            @Parameter(description = "String used to filter out Keywords")
             @QueryParam("searchText") String searchText,
             @Parameter(description = "Offset for the page", required = true)
             @QueryParam("offset") int offset,
@@ -584,7 +585,7 @@ public class CatalogRest {
 
             ArrayNode keywordsArrayNode = serializeKeywordCount(keywordCounts);
 
-            return createPaginatedResponseWithJsonNode(uriInfo, keywordsArrayNode, keywordCounts.getTotalSize(),
+            return createPaginatedResponse(uriInfo, keywordsArrayNode, keywordCounts.getTotalSize(),
                     limit, offset);
         } catch (IllegalArgumentException ex) {
             throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.BAD_REQUEST);
@@ -658,7 +659,7 @@ public class CatalogRest {
             validatePaginationParams(sort, SORT_RESOURCES, limit, offset);
             Set<Distribution> distributions = distributionManager.getUnversionedDistributions(vf.createIRI(catalogId),
                     vf.createIRI(recordId), conn);
-            return createPaginatedThingResponseJackson(uriInfo, distributions, vf.createIRI(sort), offset,
+            return createPaginatedThingResponse(uriInfo, distributions, vf.createIRI(sort), offset,
                     limit, asc, null,
                     Distribution.TYPE, bNodeService);
         } catch (IllegalArgumentException ex) {
@@ -926,7 +927,7 @@ public class CatalogRest {
         try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
             validatePaginationParams(sort, SORT_RESOURCES, limit, offset);
             Set<Version> versions = versionManager.getVersions(vf.createIRI(catalogId), vf.createIRI(recordId), conn);
-            return createPaginatedThingResponseJackson(uriInfo, versions, vf.createIRI(sort), offset, limit,
+            return createPaginatedThingResponse(uriInfo, versions, vf.createIRI(sort), offset, limit,
                     asc, null, Version.TYPE, bNodeService);
         } catch (IllegalArgumentException ex) {
             throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.BAD_REQUEST);
@@ -985,7 +986,7 @@ public class CatalogRest {
                     description = "Required title for the new Version", required = true))
             @FormParam("title") String title,
             @Parameter(schema = @Schema(type = "string",
-                    description = "Optional description for the new Version", required = false))
+                    description = "Optional description for the new Version"))
             @FormParam("description") String description) {
         try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
             checkStringParam(title, "Version title is required");
@@ -1070,12 +1071,11 @@ public class CatalogRest {
             IRI commitIri = vf.createIRI(commitId);
             IRI tagIri = vf.createIRI(iri);
             if (!commitManager.commitInRecord(recordIri, commitIri, conn)) {
-                throw ErrorUtils.sendError("Commit " + commitId + " is not in record " + recordId,
-                        Response.Status.BAD_REQUEST);
+                throw new IllegalArgumentException("Commit " + commitId + " is not in record " + recordId);
             }
 
             OrmFactory<Tag> factory = factoryRegistry.getFactoryOfType(Tag.class).orElseThrow(() ->
-                    ErrorUtils.sendError("Tag Factory not found", Response.Status.INTERNAL_SERVER_ERROR));
+                    new IllegalStateException("Tag Factory not found"));
             OffsetDateTime now = OffsetDateTime.now();
             Tag tag = factory.createNew(tagIri);
             tag.setProperty(vf.createLiteral(title), vf.createIRI(_Thing.title_IRI));
@@ -1090,9 +1090,9 @@ public class CatalogRest {
             versionManager.addVersion(vf.createIRI(catalogId), recordIri, tag, conn);
             return Response.status(201).entity(tag.getResource().stringValue()).build();
         } catch (IllegalArgumentException ex) {
-            throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.BAD_REQUEST);
+            throw RestUtils.getErrorObjBadRequest(ex);
         } catch (MobiException ex) {
-            throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
+            throw RestUtils.getErrorObjInternalServerError(ex);
         }
     }
 
@@ -1342,7 +1342,7 @@ public class CatalogRest {
             validatePaginationParams(sort, SORT_RESOURCES, limit, offset);
             Set<Distribution> distributions = distributionManager.getVersionedDistributions(vf.createIRI(catalogId),
                     vf.createIRI(recordId), vf.createIRI(versionId), conn);
-            return createPaginatedThingResponseJackson(uriInfo, distributions, vf.createIRI(sort), offset,
+            return createPaginatedThingResponse(uriInfo, distributions, vf.createIRI(sort), offset,
                     limit, asc, null,
                     Distribution.TYPE, bNodeService);
         } catch (IllegalArgumentException ex) {
@@ -1695,7 +1695,7 @@ public class CatalogRest {
                             .stringValue().equals(activeUser.getResource().stringValue());
                 };
             }
-            return createPaginatedThingResponseJackson(uriInfo, branches, vf.createIRI(sort), offset, limit,
+            return createPaginatedThingResponse(uriInfo, branches, vf.createIRI(sort), offset, limit,
                     asc, filterFunction,
                     Branch.TYPE, bNodeService);
         } catch (IllegalArgumentException ex) {
@@ -2050,7 +2050,7 @@ public class CatalogRest {
                         .limit(limit);
             }
             result.map(r -> createCommitJson(r, vf, engineManager)).forEach(commitChain::add);
-            return createPaginatedResponseWithJsonNode(uriInfo, commitChain, commits.size(), limit, offset);
+            return createPaginatedResponse(uriInfo, commitChain, commits.size(), limit, offset);
         } catch (IllegalArgumentException ex) {
             throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.BAD_REQUEST);
         } catch (IllegalStateException | MobiException ex) {

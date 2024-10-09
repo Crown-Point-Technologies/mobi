@@ -4,7 +4,7 @@
   $Id:$
   $HeadURL:$
   %%
-  Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
   %%
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -21,30 +21,62 @@
   #L%
   -->
 <div class="shacl-form-field" *ngIf="formFieldConfig.fieldType" [formGroup]="parentFormGroup">
-  <div class="toggle-field pb-2" *ngIf="formFieldConfig.fieldType === 'toggle'">
+  <div class="toggle-field pb-2" *ngIf="formFieldConfig.fieldType === FieldType.TOGGLE">
       <mat-slide-toggle [formControlName]="controlName">{{label}}</mat-slide-toggle>
   </div>
-  <div class="text-field" *ngIf="formFieldConfig.fieldType === 'text'">
+  <div class="text-field" *ngIf="formFieldConfig.fieldType === FieldType.TEXT">
       <mat-form-field class="w-100">
           <mat-label>{{label}}</mat-label>
           <input matInput [formControlName]="controlName">
           <mat-error *ngIf="fieldFormControl.invalid">Not a valid value</mat-error>
       </mat-form-field>
   </div>
-  <div class="radio-field pb-3" *ngIf="formFieldConfig.fieldType === 'radio'">
+  <div class="textarea-field" *ngIf="formFieldConfig.fieldType === FieldType.TEXTAREA">
+    <mat-form-field class="w-100">
+        <mat-label>{{label}}</mat-label>
+        <textarea matInput [formControlName]="controlName"></textarea>
+        <mat-error *ngIf="fieldFormControl.invalid">Not a valid value</mat-error>
+    </mat-form-field>
+</div>
+  <div class="radio-field pb-3" *ngIf="formFieldConfig.fieldType === FieldType.RADIO">
     <mat-radio-group class="d-flex flex-column" [formControlName]="controlName">
         <mat-radio-button *ngFor="let value of formFieldConfig.values"
                           [value]="value">
-            {{ value }}
+            {{ value.name }}
         </mat-radio-button>
     </mat-radio-group>
   </div>
-  <div class="checkbox-field pb-3 d-flex flex-column" *ngIf="formFieldConfig.fieldType === 'checkbox'" >
+  <div class="checkbox-field pb-3 d-flex flex-column" *ngIf="formFieldConfig.fieldType === FieldType.CHECKBOX" >
     <mat-checkbox *ngFor="let checkbox of checkboxes" 
-                  (change)="checkboxChange($event)" [value]="checkbox.value" 
+                  (change)="checkboxChange($event)" [value]="checkbox.value.value" 
                   [checked]="checkbox.checked" 
                   [disabled]="disableCheckboxes && !checkbox.checked">
-      {{ checkbox.value }}
+      {{ checkbox.value.name }}
     </mat-checkbox>
+  </div>
+  <div class="dropdown-field pb-3 d-flex flex-column" *ngIf="formFieldConfig.fieldType === FieldType.DROPDOWN" >
+    <mat-form-field>
+      <mat-label>{{label}}</mat-label>
+      <mat-select [formControlName]="controlName">
+        <mat-option *ngFor="let option of options" [value]="option">
+          {{ option.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+  <div class="autocomplete-field pb-3 d-flex flex-column" *ngIf="formFieldConfig.fieldType === FieldType.AUTOCOMPLETE">
+    <mat-form-field>
+      <mat-label>{{label}}</mat-label>
+      <input type="text" matInput placeholder="Select an option" (focus)="getAutocompleteOptions(formFieldConfig)" [formControlName]="controlName"
+        [matAutocomplete]="auto">
+      <mat-icon matSuffix>keyboard_arrow_down</mat-icon>
+      <mat-autocomplete #auto="matAutocomplete" (optionSelected)="onOptionSelected($event.option.value)" [displayWith]="displayFn">
+        <mat-option *ngFor="let option of filteredOptions | async" [value]="option">
+          <div [matTooltip]="option.value" matTooltipPosition="above">
+            {{ option.name }}
+          </div>
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
   </div>
 </div>

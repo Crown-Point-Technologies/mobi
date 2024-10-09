@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -360,6 +360,19 @@ ul {
         }
     }
 }
+
+visualization-menu {
+    button:focus {
+        outline: none;
+        border: none;
+    }
+
+    .mat-button:focus {
+        border: none;
+        outline: none;
+    }
+}
+
 login-layout {
     height: 100% !important;
     min-height: 0;
@@ -376,4 +389,9 @@ login-layout {
 .help-link:hover {
     text-decoration: none !important;
     background-color: var(--light);
+}
+.spinner-prefix {
+  display: block;
+  width: 15px;
+  height: 15px;
 }

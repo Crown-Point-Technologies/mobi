@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -129,7 +129,7 @@ describe('Ontology Properties Block component', function() {
     });
     describe('controller methods', function() {
         it('should update the filtered properties', function() {
-            ontologyStateStub.getEntityNameByListItem.and.callFake(a => a);
+            ontologyStateStub.getEntityName.and.callFake(a => a);
             ontologyStateStub.listItem.annotations.iris = {'annotation1': '', 'default2': '', 'owl2': '', 'prop2': ''};
             propertyManagerStub.ontologyProperties = ['ont1', 'ont2'];
             propertyManagerStub.defaultAnnotations = ['default1', 'default2', 'prop1'];

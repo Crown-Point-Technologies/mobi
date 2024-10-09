@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -28,6 +28,7 @@ import { filter, map } from 'rxjs/operators';
 
 import { MapperStateService } from './shared/services/mapperState.service';
 import { OntologyStateService } from './shared/services/ontologyState.service';
+import { WorkflowsStateService } from './workflows/services/workflows-state.service';
 
 /**
  * @class AppComponent
@@ -43,7 +44,8 @@ import { OntologyStateService } from './shared/services/ontologyState.service';
 })
 export class AppComponent implements OnInit {
     constructor(public router: Router, private titleService: Title, private os: OntologyStateService, 
-        private ms: MapperStateService) {}
+        private ms: MapperStateService,
+        private _wss: WorkflowsStateService) {}
 
     @HostListener('window:unload', [ '$event' ]) unloadHandler(event: Event): void {
         this.handleUnload(event);
@@ -80,8 +82,9 @@ export class AppComponent implements OnInit {
     handleUnload(event: Event): void {
         const ontologyHasChanges = some(this.os.list, item => this.os.hasChanges(item));
         const mappingHasChanges = this.ms.isMappingChanged();
-        if (ontologyHasChanges || mappingHasChanges) {
-            event.returnValue = false;
+        const workflowHasChanges = this._wss.isEditMode && this._wss.hasChanges;
+        if (ontologyHasChanges || mappingHasChanges || workflowHasChanges) {
+            event.preventDefault();
         }
     }
 }

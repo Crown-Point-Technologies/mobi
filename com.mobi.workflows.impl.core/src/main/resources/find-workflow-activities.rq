@@ -1,0 +1,61 @@
+PREFIX dcterm: <http://purl.org/dc/terms/>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX mcat: <http://mobi.com/ontologies/catalog#>
+PREFIX policy: <http://mobi.com/ontologies/policy#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX um: <http://mobi.com/ontologies/user/management#>
+PREFIX wf: <http://mobi.solutions/ontologies/workflows#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT DISTINCT
+    %SELECT_VARIABLES%
+WHERE {
+    ?workflowRecordIri a wf:WorkflowRecord .
+
+    OPTIONAL {
+        ?workflowRecordIri wf:latestActivity ?latestExecutionId .
+    }
+    ?executionId a wf:WorkflowExecutionActivity ;
+      prov:used ?workflowRecordIri ;
+      prov:wasAssociatedWith ?executorIri ;
+      prov:startedAtTime ?startTime . # XMLSchema#dateTime
+    ?executorIri a um:User;
+      um:username ?executorUsername .
+
+    OPTIONAL {
+      ?executorIri foaf:firstName ?executorFirstName .
+    }
+    OPTIONAL {
+      ?executorIri foaf:lastName ?executorLastName .
+    }
+    # endedAt and succeeded is optional
+    OPTIONAL {
+      ?executionId wf:succeeded ?succeeded ;
+                   prov:endedAtTime ?endTime . # XMLSchema#dateTime
+    }
+
+    # Generated Fields
+    BIND(IF(BOUND(?executorFirstName) && BOUND(?executorLastName), CONCAT(?executorFirstName, " ", ?executorLastName), "") as ?option4)
+    BIND(IF(?option4 != "", ?option4, IF(BOUND(?executorFirstName), ?executorFirstName, ?executorUsername)) as ?executorDisplayName)
+
+    BIND(IF(?executionId = ?latestExecutionId, "true"^^xsd:boolean, "false"^^xsd:boolean) as ?isLatestActivity)
+
+    # Status failure|started|success|never_run
+    BIND(IF(BOUND(?endTime) && BOUND(?succeeded),
+      IF(?succeeded = "true"^^xsd:boolean, "success", "failure"),
+      "") as ?succeededStatus
+    )
+    BIND(IF(?succeededStatus != "",
+       ?succeededStatus,
+       "started") as ?status
+    )
+    # FILTERS
+    # FILTER - startingAfterFilter
+    %FILTER_STARTING_AFTER%
+
+    # FILTER - endingBeforeFilter
+    %FILTER_ENDING_BEFORE%
+
+    # FILTER - status
+    %FILTER_STATUS%
+}

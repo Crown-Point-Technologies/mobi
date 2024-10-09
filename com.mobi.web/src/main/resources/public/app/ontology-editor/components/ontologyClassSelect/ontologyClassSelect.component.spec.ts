@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -75,7 +75,7 @@ describe('Ontology Class Select component', function() {
 
         ontologyStateStub.listItem = new OntologyListItem();
         spyOn(component.selectedChange, 'emit');
-        ontologyStateStub.getEntityNameByListItem.and.returnValue(classOption.name);
+        ontologyStateStub.getEntityName.and.returnValue(classOption.name);
     });
 
     afterEach(function() {

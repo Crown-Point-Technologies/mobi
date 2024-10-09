@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -35,6 +35,7 @@ import { ProgressSpinnerService } from '../../../shared/components/progress-spin
 import { ToastService } from '../../../shared/services/toast.service';
 import { SidePanelPayloadI } from '../../classes/sidebarState';
 import { D3SimulatorService } from '../../services/d3Simulator.service';
+import { VisualizationMenuComponent } from '../visualization-menu/visualization-menu.component';
 
 describe('Ontology Visualization component', () => {
     let component: OntologyVisualization;
@@ -50,7 +51,8 @@ describe('Ontology Visualization component', () => {
             declarations: [
                 OntologyVisualization,
                 MockComponent(SpinnerComponent),
-                MockComponent(InfoMessageComponent)
+                MockComponent(InfoMessageComponent),
+                MockComponent(VisualizationMenuComponent)
             ],
             providers: [
                 MockProvider(ProgressSpinnerService),
@@ -63,6 +65,9 @@ describe('Ontology Visualization component', () => {
         cyChartSpy = jasmine.createSpyObj('cyChart', {
             json: { elements: { nodes: [], edges: [] } },
             ready: undefined,
+            zoom: (zoomLevel: number) => {
+                console.log(zoomLevel);
+            }
         });
 
         fixture = TestBed.createComponent(OntologyVisualization);
@@ -147,11 +152,13 @@ describe('Ontology Visualization component', () => {
             fixture.autoDetectChanges();
             tick(50000);
             expect(element.query(By.css('.ontology-visualization.__________cytoscape_container'))).toBeTruthy();
+            expect(element.query(By.css('visualization-menu'))).toBeTruthy();
         }));
         it('when ontology has no class', () =>  {
             expect(element.query(By.css('info-message'))).toBeFalsy();
             component.cyChartSize = 0;
             fixture.detectChanges();
+            expect(element.query(By.css('visualization-menu'))).toBeFalsy();
             expect(element.query(By.css('info-message'))).toBeTruthy();
         });
     });

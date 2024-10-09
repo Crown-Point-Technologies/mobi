@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -60,7 +60,6 @@ export class BranchListComponent {
     catalogId = '';
     increment = 10;
     limit = this.increment;
-    recordId: string|undefined = undefined;
 
     private _record: JSONLDObject;
 
@@ -82,7 +81,6 @@ export class BranchListComponent {
         this.setBranches();
     }
     setBranches(): void {
-        this.recordId = this.isOntOrShapes() ? this.record['@id'] : undefined;
         if (this.cm.isVersionedRDFRecord(this.record)) {
             const paginatedConfig: PaginatedConfig = {
                 pageIndex: 0,
@@ -104,10 +102,5 @@ export class BranchListComponent {
                       0 - (response.body.length - this.branches.length);
                 }, error => this.toast.createErrorToast(error));
         }
-    }
-
-    private isOntOrShapes(): boolean {
-        return this.om.isOntologyRecord(this.record)
-            || includes(get(this.record, '@type', []), `${SHAPESGRAPHEDITOR}ShapesGraphRecord`);
     }
 }

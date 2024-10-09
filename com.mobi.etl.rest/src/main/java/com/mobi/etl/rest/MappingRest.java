@@ -54,6 +54,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -140,8 +141,9 @@ public class MappingRest {
             },
             requestBody = @RequestBody(
                     content = {
-                            @Content(mediaType = MediaType.MULTIPART_FORM_DATA,
-                                    schema = @Schema(implementation = MappingFileUpload.class)
+                            @Content(mediaType = MediaType.MULTIPART_FORM_DATA, encoding = {
+                                    @Encoding(name = "keywords", explode = true)
+                                }, schema = @Schema(implementation = MappingFileUpload.class)
                             )
                     }
             )
@@ -149,7 +151,7 @@ public class MappingRest {
     @ActionAttributes(@AttributeValue(id = com.mobi.ontologies.rdfs.Resource.type_IRI, value = MappingRecord.TYPE))
     @ResourceId("http://mobi.com/catalog-local")
     public Response upload(@Context HttpServletRequest servletRequest) {
-        Map<String, List<Class>> fields = new HashMap<>();
+        Map<String, List<Class<?>>> fields = new HashMap<>();
         fields.put("title", Stream.of(String.class).collect(Collectors.toList()));
         fields.put("description", Stream.of(String.class).collect(Collectors.toList()));
         fields.put("jsonld", Stream.of(String.class).collect(Collectors.toList()));

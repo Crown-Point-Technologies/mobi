@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -38,6 +38,8 @@ import { OntologyVisualizationService } from './services/ontologyVisualization.s
 import { OntologyVisualizationDataService } from './services/ontologyVisualizationData.service';
 import { D3SimulatorService } from './services/d3Simulator.service';
 import { ControlRecordUtilsService } from './services/controlRecordUtils.service';
+import { VisualizationMenuComponent } from './components/visualization-menu/visualization-menu.component';
+import { MatSliderModule } from '@angular/material/slider';
 
 /**
  * @namespace ontology-visualization
@@ -55,17 +57,20 @@ import { ControlRecordUtilsService } from './services/controlRecordUtils.service
         MatExpansionModule,
         MatCheckboxModule,
         MatListModule,
+        MatSliderModule,
     ],
     declarations: [
         OntologyVisualization,
         VisualizationSidebar,
         VisualizationSidebarSearch,
         VisualizationClassListComponent,
+        VisualizationMenuComponent,
     ],
     exports: [
         MatExpansionModule,
         VisualizationSidebar,
-        OntologyVisualization
+        OntologyVisualization,
+        VisualizationMenuComponent
     ],
     providers: [
         ControlRecordUtilsService,

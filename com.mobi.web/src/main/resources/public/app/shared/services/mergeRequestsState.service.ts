@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -23,8 +23,8 @@
 import { HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { get, uniq, filter, find, union, concat, merge, map as _map } from 'lodash';
-import { forkJoin, Observable, of, throwError } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { forkJoin, iif, Observable, of, Subject, throwError } from 'rxjs';
+import { catchError, map, switchMap, takeUntil, tap } from 'rxjs/operators';
 import { CATALOG, MERGEREQ, OWL, ONTOLOGYEDITOR } from '../../prefixes';
 
 import { 
@@ -50,6 +50,8 @@ import { UserManagerService } from './userManager.service';
 import { ToastService } from './toast.service';
 import { SortOption } from '../models/sortOption.interface';
 import { MergeRequestPaginatedConfig } from '../models/mergeRequestPaginatedConfig.interface';
+import { MergeRequestStatus } from '../models/merge-request-status';
+import { User } from '../models/user.class';
 
 /**
  * @class shared.MergeRequestsStateService
@@ -105,7 +107,7 @@ export class MergeRequestsStateService {
      * {@link merge-requests.MergeRequestListComponent}.
      * @type {boolean}
      */
-    acceptedFilter = false;
+    acceptedFilter = 'open';
     /**
      * String to search the creators filter in {@link merge-requests.MergeRequestFilterComponent}.
      * @type {string}
@@ -242,7 +244,7 @@ export class MergeRequestsStateService {
         this.selectedRecord = undefined;
         this.clearDifference();
         this.sameBranch = false;
-        this.acceptedFilter = false;
+        this.acceptedFilter = 'open';
         this.totalRequestSize = 0;
         this.currentRequestPage = 0;
         this.requestSortOption = undefined;
@@ -268,10 +270,14 @@ export class MergeRequestsStateService {
      *
      * @param {MergeRequestPaginatedConfig} paginatedConfig The parameters to be used for the paginated search
      */
-    setRequests(paginatedConfig: MergeRequestPaginatedConfig): void {
+    setRequests(paginatedConfig: MergeRequestPaginatedConfig, destroySub$: Subject<void>=undefined): void {
+        if (destroySub$ === undefined) {
+            destroySub$ = new Subject<void>();
+        }
         let recordsToRetrieve;
         this.mm.getRequests(paginatedConfig)
             .pipe(
+                takeUntil(destroySub$),
                 switchMap((data: HttpResponse<JSONLDObject[]>) => {
                     this.requests = data.body.map(obj => this.getRequestObj(obj));
                     this.totalRequestSize = Number(data.headers.get('x-total-count')) || 0;
@@ -316,21 +322,42 @@ export class MergeRequestsStateService {
         request.targetCommit = '';
         request.removeSource = undefined;
         request.comments = [];
-        if (this.mm.isAccepted(request.jsonld)) {
+        const requestStatus: MergeRequestStatus = this.mm.requestStatus(request.jsonld);
+        if (requestStatus === 'accepted' || requestStatus === 'closed') {
             request.sourceTitle = getPropertyValue(request.jsonld, `${MERGEREQ}sourceBranchTitle`);
             request.targetTitle = getPropertyValue(request.jsonld, `${MERGEREQ}targetBranchTitle`);
             request.sourceCommit = getPropertyId(request.jsonld, `${MERGEREQ}sourceCommit`);
             request.targetCommit = getPropertyId(request.jsonld, `${MERGEREQ}targetCommit`);
-            return this.mm.getComments(request.jsonld['@id'])
-                .pipe(switchMap(comments => {
-                    request.comments = comments;
-                    return this.cm.getDifference(request.sourceCommit, request.targetCommit, 
-                        this.cm.differencePageSize, 0);
-                }),
-                switchMap((response: HttpResponse<CommitDifference>) =>
-                    this.processDifferenceResponse(request.recordIri, '', request.sourceCommit, response, 
-                        request.recordType)
-                ));
+            return forkJoin({
+                comments: this.mm.getComments(request.jsonld['@id']).pipe( 
+                    catchError(() => {
+                        return of([]);
+                    }),
+                    tap((comments: JSONLDObject[][]) => {
+                        if (comments) {
+                            request.comments = comments;
+                        }
+                    }),
+                ),
+                difference: of(request.sourceCommit !== '' && request.targetCommit !== '').pipe(
+                    switchMap((hasSourceTargetCommit) => {
+                        if (hasSourceTargetCommit) {
+                            return this.cm.getDifference(request.sourceCommit, request.targetCommit, this.cm.differencePageSize, 0).pipe(
+                                switchMap((response: HttpResponse<CommitDifference>) => 
+                                    this.processDifferenceResponse(request.recordIri, '', request.sourceCommit, response, request.recordType))
+                            );
+                        }
+                        return of(null);
+                    }),
+                    catchError(() => {
+                        return of(null)
+                    })
+                )
+            }).pipe(
+                map(() => {
+                    return null;
+                })
+            );
         } else {
             return this.mm.getComments(request.jsonld['@id'])
                 .pipe(
@@ -440,10 +467,10 @@ export class MergeRequestsStateService {
             title: getDctermsValue(jsonld, 'title'),
             description: getDctermsValue(jsonld, 'description') || 'No description',
             date: this._getDate(jsonld),
-            creator: this._getCreator(jsonld),
+            creator: this._getCreatorUser(jsonld),
             recordIri: getPropertyId(jsonld, `${MERGEREQ}onRecord`),
             assignees: get(jsonld, `['${MERGEREQ}assignee']`, [])
-                .map(obj => get(find(this.um.users, {iri: obj['@id']}), 'username'))
+                .map(obj => this.um.users.find(user => user.iri === obj['@id']))
                 .filter(obj => !!obj)
         };
     }
@@ -600,8 +627,11 @@ export class MergeRequestsStateService {
         const dateStr = getDctermsValue(jsonld, 'issued');
         return getDate(dateStr, 'shortDate');
     }
-    private _getCreator(jsonld: JSONLDObject) {
+    public getUser(iri: string) {
+        return find(this.um.users, {iri});
+    }
+    private _getCreatorUser(jsonld: JSONLDObject): User {
         const iri = getDctermsId(jsonld, 'creator');
-        return get(find(this.um.users, {iri}), 'username');
+        return find(this.um.users, {iri});
     }
 }

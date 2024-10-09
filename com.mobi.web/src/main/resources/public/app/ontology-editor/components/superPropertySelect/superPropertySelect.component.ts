@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -76,7 +76,7 @@ export class SuperPropertySelectComponent implements OnInit {
     
     ngOnInit(): void {
         this.selectedOptions = this.selected.map(iriObj => ({
-            name: this.os.getEntityNameByListItem(iriObj['@id']),
+            name: this.os.getEntityName(iriObj['@id']),
             item: iriObj['@id']
         }));
         this.filteredProperties = this.propControl.valueChanges
@@ -105,14 +105,14 @@ export class SuperPropertySelectComponent implements OnInit {
     filter(searchText: string): PropGrouping[] {
         let iris = Object.keys(this.os.listItem[this.key].iris);
         iris = iris.filter(iri => findIndex(this.selected, val => val['@id'] === iri) < 0);
-        return this.os.getGroupedSelectList(iris, searchText, iri => this.os.getEntityNameByListItem(iri));
+        return this.os.getGroupedSelectList(iris, searchText, iri => this.os.getEntityName(iri));
     }
     add(event: MatChipInputEvent): void {
         const input = event.input;
         const value = event.value;
     
         if (value) {
-            this.selectedOptions.push({ item: value, name: this.os.getEntityNameByListItem(value) });
+            this.selectedOptions.push({ item: value, name: this.os.getEntityName(value) });
             this.selected.push({'@id': value});
             this.selectedChange.emit(this.selected);
         }

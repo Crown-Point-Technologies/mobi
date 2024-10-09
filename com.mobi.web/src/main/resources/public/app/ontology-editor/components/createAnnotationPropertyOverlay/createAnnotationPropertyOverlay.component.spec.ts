@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -38,7 +38,7 @@ import { cleanStylesFromDOM } from '../../../../../public/test/ts/Shared';
 import { OntologyStateService } from '../../../shared/services/ontologyState.service';
 import { ErrorDisplayComponent } from '../../../shared/components/errorDisplay/errorDisplay.component';
 import { StaticIriComponent } from '../staticIri/staticIri.component';
-import { AdvancedLanguageSelectComponent } from '../advancedLanguageSelect/advancedLanguageSelect.component';
+import { AdvancedLanguageSelectComponent } from '../../../shared/components/advancedLanguageSelect/advancedLanguageSelect.component';
 import { HierarchyNode } from '../../../shared/models/hierarchyNode.interface';
 import { CamelCasePipe } from '../../../shared/pipes/camelCase.pipe';
 import { OntologyListItem } from '../../../shared/models/ontologyListItem.class';
@@ -188,7 +188,6 @@ describe('Create Annotation Overlay component', function() {
             component.createForm.controls.description.setValue('description');
             component.create();
             tick();
-            expect(ontologyStateServiceStub.addLanguageToNewEntity).toHaveBeenCalledWith(component.property, component.createForm.controls.language.value);
             expect(ontologyStateServiceStub.updatePropertyIcon).toHaveBeenCalledWith(component.property);
             expect(ontologyStateServiceStub.addEntity).toHaveBeenCalledWith(component.property);
             expect(ontologyStateServiceStub.listItem.annotations.iris).toEqual({[propIri]: ontologyStateServiceStub.listItem.ontologyId});

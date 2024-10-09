@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -158,7 +158,7 @@ export class PropMappingOverlayComponent implements OnInit {
                 this.rangeClasses = undefined;
                 this.rangeClassOptions = [];
                 this.propMappingForm.controls.rangeClass.setValue('');
-                this.propMappingForm.controls.rangeClass.disable();
+                this.propMappingForm.controls.rangeClass.setValidators([this.emptyRangeValidator, Validators.required]);
             }
             this.showRangeClass = true;
         });
@@ -170,8 +170,11 @@ export class PropMappingOverlayComponent implements OnInit {
     updateRange(): void {
         this.propMappingForm.controls.column.setValue('');
         if (this.selectedProp.type === `${OWL}ObjectProperty`) {
+            this.propMappingForm.controls.rangeClass.reset();
             this.propMappingForm.controls.rangeClass.setValidators([this.emptyRangeValidator, Validators.required]);
             this.propMappingForm.controls.column.clearValidators();
+            this.propMappingForm.controls.column.setValue('');
+            this.propMappingForm.controls.column.updateValueAndValidity();
             this.setRangeClass();
         } else {
             this.propMappingForm.controls.rangeClass.clearValidators();

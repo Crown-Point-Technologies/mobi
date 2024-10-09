@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,6 +21,7 @@
  * #L%
  */
 import { JSONLDObject } from './JSONLDObject.interface';
+import { User } from './user.class';
 
 /**
  * Configuration to create a new Merge Request
@@ -33,6 +34,6 @@ export interface MergeRequestConfig {
     sourceBranch?: JSONLDObject,
     targetBranchId: string,
     targetBranch?: JSONLDObject,
-    assignees?: string[], // List of assignee usernames
+    assignees?: User[], // List of assignee Users
     removeSource: boolean
 }

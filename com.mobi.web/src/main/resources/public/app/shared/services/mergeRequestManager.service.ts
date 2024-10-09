@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -25,7 +25,7 @@ import { Injectable } from '@angular/core';
 
 import { Observable, Subject } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
-import { cloneDeep, forEach, get, has, includes } from 'lodash';
+import { cloneDeep, get, has, includes } from 'lodash';
 
 import { DCTERMS, MERGEREQ  } from '../../prefixes';
 import { EventTypeConstants, EventWithPayload } from '../models/eventWithPayload.interface';
@@ -41,6 +41,7 @@ import { MergeRequest } from '../models/mergeRequest.interface';
 import { UserCount } from '../models/user-count.interface';
 import { PaginatedConfig } from '../models/paginatedConfig.interface';
 import { RecordCount } from '../models/record-count.interface';
+import { MergeRequestStatus, MergeRequestStatusAction } from '../models/merge-request-status';
 
 /**
  * @class shared.MergeRequestManagerService
@@ -97,7 +98,7 @@ export class MergeRequestManagerService {
         if (config.searchText) {
             params = params.set('searchText', config.searchText);
         }
-        params = params.set('accepted', config.accepted);
+        params = params.set('requestStatus', config.requestStatus);
         if (config.creators && config.creators.length) {
             config.creators.forEach(creator => {
                 params = params.append('creators', creator);
@@ -134,7 +135,7 @@ export class MergeRequestManagerService {
         if (has(requestConfig, 'description')) {
             fd.append('description', requestConfig.description);
         }
-        forEach(get(requestConfig, 'assignees', []), username => fd.append('assignees', username));
+        get(requestConfig, 'assignees', []).forEach(user => fd.append('assignees', user.username));
         if (has(requestConfig, 'removeSource')) {
             fd.append('removeSource', `${requestConfig.removeSource}`);
         }
@@ -169,38 +170,44 @@ export class MergeRequestManagerService {
      * Calls the POST /mobirest/merge-requests/{requestId} endpoint to accept a Merge Request
      * with a matching IRI and perform the represented merge.
      *
-     * @param {string} requestId An IRI ID of a Merge Request
+     * @param {string} mergeRequest The jsonLD of the merge request to take an action against
+     * @param {string} action A string representation of the action to take against the mergeRequest
      * @returns {Observable<null>} An Observable that resolves if the request was accepted or rejects with an
      * error message
      */
-    acceptRequest(requestToAccept: MergeRequest): Observable<void> {
-        const requestToAcceptClone = cloneDeep(requestToAccept);
-        const mergeRequestId = requestToAcceptClone.jsonld['@id'];
-        return this.spinnerSvc.track(this.http.post(`${this.prefix}/${encodeURIComponent(mergeRequestId)}`, null))
-           .pipe(
+    updateRequestStatus(mergeRequest: MergeRequest, action: MergeRequestStatusAction): Observable<void> {
+        const requestClone = cloneDeep(mergeRequest);
+        const mergeRequestId = requestClone.jsonld['@id'];
+        const params = {
+            action: action
+        };
+        return this.spinnerSvc.track(this.http.post(`${this.prefix}/${encodeURIComponent(mergeRequestId)}/status`,
+            null, {params: createHttpParams(params)})).pipe(
                 catchError(handleError),
                 map(() => {}),
                 tap(() => {
-                    this._requestAccepted(requestToAcceptClone);
+                    this._requestAccepted(requestClone, action);
                 })
             );
     }
     /**
      * Emits an event on merge request acceptance (IRI of the record being accepted and the target branch IRI)
      * @param requestToAccept Merge Request IRI ID
-     * @param targetBranchId Target Branch IRI ID
+     * @param {string} action A string representation of the action to take against the mergeRequest
      */
-    _requestAccepted(requestToAccept: MergeRequest): void {
-        const recordId = requestToAccept.recordIri;
-        const targetBranchId = requestToAccept.targetBranch['@id'];
-        this._mergeRequestActionSubject.next({
-            eventType: EventTypeConstants.EVENT_MERGE_REQUEST_ACCEPTED, 
-            payload: {
-                recordId, 
-                targetBranchId,
-                requestToAccept
-            }
-        });
+    _requestAccepted(requestToAccept: MergeRequest, action: MergeRequestStatusAction): void {
+        if (action === 'accept') {
+            const recordId = requestToAccept.recordIri;
+            const targetBranchId = requestToAccept.targetBranch['@id'];
+            this._mergeRequestActionSubject.next({
+                eventType: EventTypeConstants.EVENT_MERGE_REQUEST_ACCEPTED,
+                payload: {
+                    recordId,
+                    targetBranchId,
+                    requestToAccept
+                }
+            });
+        }
     }
     /**
      * Calls the GET /mobirest/merge-requests/{requestId}/comments endpoint to retrieve the array of comment
@@ -260,8 +267,7 @@ export class MergeRequestManagerService {
      */
     updateComment(requestId: string, commentId: string, commentStr: string): Observable<void> {
         return this.spinnerSvc.track(this.http.put(`${this.prefix}/${encodeURIComponent(requestId)}/comments/${encodeURIComponent(commentId)}`, 
-          commentStr))
-           .pipe(catchError(handleError), map(() => {}));
+          commentStr)).pipe(catchError(handleError), map(() => {}));
     }
     /**
      * Calls the PUT /mobirest/merge-requests/{requestId} endpoint to update a Merge Request
@@ -314,7 +320,7 @@ export class MergeRequestManagerService {
       const url = `${this.prefix}/assignees`;
       const request =  this.http.get<UserCount[]>(url, { params, observe: 'response' });
       return this.spinnerSvc.trackedRequest(request, isTracked).pipe(catchError(handleError));
-  }
+    }
     /**
      * Retrieves the list of records of merge requests throughout the application using the provided pagination
      * parameters. Results include the record's IRI, title, and MR count and are ordered by title.
@@ -334,14 +340,19 @@ export class MergeRequestManagerService {
         const request =  this.http.get<RecordCount[]>(url, { params, observe: 'response' });
         return this.spinnerSvc.trackedRequest(request, isTracked).pipe(catchError(handleError));
     }
-
     /**
-     * Determines whether the passed request is accepted or not.
+     * Returns the current status of the passed Merge Request.
      *
      * @param {JSONLDObject} request A MergeRequest JSON-LD object
-     * @return {boolean} True if the MergeRequest is accepted; false otherwise
+     * @return {string} a status string corresponding to the current status
      */
-    isAccepted(request: JSONLDObject): boolean {
-        return includes(request['@type'], `${MERGEREQ}AcceptedMergeRequest`);
+    requestStatus(request: JSONLDObject): MergeRequestStatus {
+        if (includes(request['@type'], `${MERGEREQ}AcceptedMergeRequest`)) {
+            return 'accepted';
+        } else if (includes(request['@type'], `${MERGEREQ}ClosedMergeRequest`)) {
+            return 'closed';
+        } else {
+            return 'open';
+        }
     }
 }

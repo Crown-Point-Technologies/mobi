@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -232,7 +232,7 @@ describe('Annotation Overlay component', function() {
     });
     describe('controller methods', function() {
         it('should correctly group and filter the list of annotations', function() {
-            ontologyStateStub.getEntityNameByListItem.and.callFake(a => a);
+            ontologyStateStub.getEntityName.and.callFake(a => a);
             spyOn(component, 'isPropDisabled').and.callFake(a => a === 'http://A#prop2');
             component.annotations = ['http://A#prop1', 'http://B#prop3', 'http://A#prop2', 'http://C#other'];
             expect(component.filter('PROP')).toEqual([

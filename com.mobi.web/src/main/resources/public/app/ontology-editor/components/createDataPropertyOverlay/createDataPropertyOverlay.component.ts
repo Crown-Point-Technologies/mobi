@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -33,6 +33,7 @@ import { REGEX } from '../../../constants';
 import { splitIRI } from '../../../shared/pipes/splitIRI.pipe';
 import { JSONLDId } from '../../../shared/models/JSONLDId.interface';
 import { noWhitespaceValidator } from '../../../shared/validators/noWhitespace.validator';
+import { addLanguageToAnnotations } from '../../../shared/utility';
 
 interface CharacteristicI {
     typeIRI: string;
@@ -116,7 +117,7 @@ export class CreateDataPropertyOverlayComponent implements OnInit {
                 property['@type'].push(this.characteristics[index].typeIRI);
             }
         });
-        this.os.addLanguageToNewEntity(property, this.createForm.controls.language.value);
+        addLanguageToAnnotations(property, this.createForm.controls.language.value);
         if (this.selectedDomains.length) {
             property[`${RDFS}domain`] = this.selectedDomains.map(iri => ({'@id': iri}));
         }

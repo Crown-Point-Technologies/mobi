@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -31,7 +31,7 @@ import {
     SHORTDATE_DATE_STR,
     cleanStylesFromDOM,
 } from '../../../test/ts/Shared';
-import { CATALOG, DCTERMS, MERGEREQ, ONTOLOGYEDITOR, OWL } from '../../prefixes';
+import { CATALOG, DCTERMS, MERGEREQ, ONTOLOGYEDITOR, OWL, USER } from '../../prefixes';
 import { CommitDifference } from '../models/commitDifference.interface';
 import { Difference } from '../models/difference.class';
 import { Conflict } from '../models/conflict.interface';
@@ -42,6 +42,7 @@ import { MergeRequestManagerService } from './mergeRequestManager.service';
 import { UserManagerService } from './userManager.service';
 import { OntologyManagerService } from './ontologyManager.service';
 import { ToastService } from './toast.service';
+import { User } from '../models/user.class';
 import { MergeRequestsStateService } from './mergeRequestsState.service';
 
 describe('Merge Requests State service', function() {
@@ -51,18 +52,30 @@ describe('Merge Requests State service', function() {
     let userManagerStub: jasmine.SpyObj<UserManagerService>;
     let ontologyManagerStub: jasmine.SpyObj<OntologyManagerService>;
     let toastStub: jasmine.SpyObj<ToastService>;
-    const acceptedRequest = { accepted: true };
-    const openRequest = { accepted: false };
+    const acceptedRequest = { requestStatus: 'accepted' };
+    const openRequest = { requestStatus: 'open' };
 
     const error = 'Error Message';
     const catalogId = 'catalogId';
     const requestId = 'requestId';
     const recordId = 'recordId';
-    const creatorId = 'creator';
+    const creatorUserId = 'urn://test/user/creator-user-1';
+    const creatorUsername = 'creator';
+    const creator: User = new User({
+        '@id': creatorUserId,
+        '@type': [`${USER}User`],
+        [`${USER}username`]: [{ '@value': creatorUsername }],
+        [`${USER}hasUserRole`]: [],
+    });
     const assigneeId = 'assignee';
+    const assignee: User = new User({
+      '@id': assigneeId,
+      '@type': [`${USER}User`],
+      [`${USER}username`]: [{ '@value': assigneeId }]
+    });
     const request: JSONLDObject = {
       '@id': requestId,
-      [`${DCTERMS}creator`]: [{'@id': creatorId}],
+      [`${DCTERMS}creator`]: [{'@id': creatorUserId}],
       [`${MERGEREQ}assignee`]: [{'@id': assigneeId}]
     };
     const sourceBranch: JSONLDObject = {
@@ -90,9 +103,9 @@ describe('Merge Requests State service', function() {
     const requestObj: MergeRequest = {
         title: 'title',
         date: 'date',
-        creator: creatorId,
+        creator: creator,
         recordIri: recordId,
-        assignees: [assigneeId],
+        assignees: [assignee],
         jsonld: request,
         recordType: `${ONTOLOGYEDITOR}OntologyRecord`
     };
@@ -151,7 +164,7 @@ describe('Merge Requests State service', function() {
             sourceBranchId: 'id',
             targetBranchId: 'id',
             recordId: 'id',
-            assignees: ['user'],
+            assignees: [assignee],
             removeSource: true
         };
         service.createRequestStep = 1;
@@ -173,7 +186,7 @@ describe('Merge Requests State service', function() {
         expect(service.selectedRecord).toBeUndefined();
         expect(service.clearDifference).toHaveBeenCalledWith();
         expect(service.sameBranch).toBeFalse();
-        expect(service.acceptedFilter).toBeFalse();
+        expect(service.acceptedFilter).toBe('open');
         expect(service.totalRequestSize).toEqual(0);
         expect(service.currentRequestPage).toEqual(0);
         expect(service.requestSortOption).toBeUndefined();
@@ -213,7 +226,7 @@ describe('Merge Requests State service', function() {
                         catalogManagerStub.getRecord.and.returnValue(of([record]));
                         service.setRequests(acceptedRequest);
                         tick();
-                        expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({accepted: true});
+                        expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({requestStatus: 'accepted'});
                         expect(service.getRequestObj).toHaveBeenCalledWith(request);
                         expect(service.totalRequestSize).toEqual(totalSize);
                         expect(catalogManagerStub.getRecord.calls.count()).toEqual(1);
@@ -227,7 +240,7 @@ describe('Merge Requests State service', function() {
                         catalogManagerStub.getRecord.and.returnValue(throwError(error));
                         service.setRequests(acceptedRequest);
                         tick();
-                        expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({accepted: true});
+                        expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({requestStatus: 'accepted'});
                         expect(service.getRequestObj).toHaveBeenCalledWith(request);
                         expect(service.totalRequestSize).toEqual(totalSize);
                         expect(catalogManagerStub.getRecord.calls.count()).toEqual(1);
@@ -241,7 +254,7 @@ describe('Merge Requests State service', function() {
                 mergeRequestManagerStub.getRequests.and.returnValue(throwError(error));
                 service.setRequests(acceptedRequest);
                 tick();
-                expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({accepted: true});
+                expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({requestStatus: 'accepted'});
                 expect(service.getRequestObj).not.toHaveBeenCalled();
                 expect(catalogManagerStub.getRecord).not.toHaveBeenCalled();
                 expect(toastStub.createErrorToast).toHaveBeenCalledWith(error);
@@ -258,7 +271,7 @@ describe('Merge Requests State service', function() {
                         catalogManagerStub.getRecord.and.returnValue(of([record]));
                         service.setRequests(openRequest);
                         tick();
-                        expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({accepted: false});
+                        expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({requestStatus: 'open'});
                         expect(service.getRequestObj).toHaveBeenCalledWith(request);
                         expect(service.totalRequestSize).toEqual(totalSize);
                         expect(catalogManagerStub.getRecord.calls.count()).toEqual(1);
@@ -272,7 +285,7 @@ describe('Merge Requests State service', function() {
                         catalogManagerStub.getRecord.and.returnValue(throwError(error));
                         service.setRequests(openRequest);
                         tick();
-                        expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({accepted: false});
+                        expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({requestStatus: 'open'});
                         expect(service.getRequestObj).toHaveBeenCalledWith(request);
                         expect(service.totalRequestSize).toEqual(totalSize);
                         expect(catalogManagerStub.getRecord.calls.count()).toEqual(1);
@@ -286,7 +299,7 @@ describe('Merge Requests State service', function() {
                 mergeRequestManagerStub.getRequests.and.returnValue(throwError(error));
                 service.setRequests(openRequest);
                 tick();
-                expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({accepted: false});
+                expect(mergeRequestManagerStub.getRequests).toHaveBeenCalledWith({requestStatus: 'open'});
                 expect(service.getRequestObj).not.toHaveBeenCalled();
                 expect(catalogManagerStub.getRecord).not.toHaveBeenCalled();
                 expect(toastStub.createErrorToast).toHaveBeenCalledWith(error);
@@ -301,7 +314,7 @@ describe('Merge Requests State service', function() {
         });
         describe('accepted and', function() {
             beforeEach(function() {
-                mergeRequestManagerStub.isAccepted.and.returnValue(true);
+                mergeRequestManagerStub.requestStatus.and.returnValue('accepted');
                 this.copyRequest.jsonld[`${MERGEREQ}sourceBranchTitle`] = [{ '@value': 'sourceBranchTitle' }];
                 this.copyRequest.jsonld[`${MERGEREQ}targetBranchTitle`] = [{ '@value': 'targetBranchTitle' }];
                 this.copyRequest.jsonld[`${MERGEREQ}sourceCommit`] = [{ '@id': 'sourceCommit' }];
@@ -337,8 +350,8 @@ describe('Merge Requests State service', function() {
                     it('processDifferenceResponse rejects', fakeAsync(function() {
                         spyOn(service, 'processDifferenceResponse').and.returnValue(throwError(error));
                         service.setRequestDetails(this.copyRequest)
-                            .subscribe(() => fail('Observable should have rejected'), response => {
-                                expect(response).toEqual(error);
+                            .subscribe(response => {
+                                expect(response).toEqual(null);
                                 expect(this.copyRequest.sourceBranch).toEqual({'@id': ''});
                                 expect(this.copyRequest.targetBranch).toEqual({'@id': ''});
                                 expect(this.copyRequest.removeSource).toBeUndefined();
@@ -350,7 +363,7 @@ describe('Merge Requests State service', function() {
                                 expect(mergeRequestManagerStub.getComments).toHaveBeenCalledWith(requestId);
                                 expect(catalogManagerStub.getDifference).toHaveBeenCalledWith('sourceCommit', 'targetCommit', 100, 0);
                                 expect(service.processDifferenceResponse).toHaveBeenCalledWith(recordId, '', 'sourceCommit', this.httpResponse, `${ONTOLOGYEDITOR}OntologyRecord`);
-                            });
+                            }, () => fail('Observable should have rejected'), );
                         tick();
                     }));
                 });
@@ -358,8 +371,8 @@ describe('Merge Requests State service', function() {
                     spyOn(service, 'processDifferenceResponse');
                     catalogManagerStub.getDifference.and.returnValue(throwError(error));
                     service.setRequestDetails(this.copyRequest)
-                        .subscribe(() => fail('Observable should have rejected'), response => {
-                            expect(response).toEqual(error);
+                        .subscribe(response => {
+                            expect(response).toEqual(null);
                             expect(this.copyRequest.sourceBranch).toEqual({'@id': ''});
                             expect(this.copyRequest.targetBranch).toEqual({'@id': ''});
                             expect(this.copyRequest.removeSource).toBeUndefined();
@@ -371,16 +384,16 @@ describe('Merge Requests State service', function() {
                             expect(mergeRequestManagerStub.getComments).toHaveBeenCalledWith(requestId);
                             expect(catalogManagerStub.getDifference).toHaveBeenCalledWith('sourceCommit', 'targetCommit', 100, 0);
                             expect(service.processDifferenceResponse).not.toHaveBeenCalled();
-                        });
+                        }, () => fail('Observable should have rejected'), );
                     tick();
                 }));
             });
             it('getComments rejects', fakeAsync(function() {
-                spyOn(service, 'processDifferenceResponse');
+                spyOn(service, 'processDifferenceResponse').and.returnValue(of(undefined));
                 mergeRequestManagerStub.getComments.and.returnValue(throwError(error));
                 service.setRequestDetails(this.copyRequest)
-                    .subscribe(() => fail('Observable should have rejected'), response => {
-                        expect(response).toEqual(error);
+                    .subscribe(response => {
+                        expect(response).toEqual(null);
                         expect(this.copyRequest.sourceBranch).toEqual({'@id': ''});
                         expect(this.copyRequest.targetBranch).toEqual({'@id': ''});
                         expect(this.copyRequest.removeSource).toBeUndefined();
@@ -390,15 +403,21 @@ describe('Merge Requests State service', function() {
                         expect(this.copyRequest.sourceCommit).toEqual('sourceCommit');
                         expect(this.copyRequest.targetCommit).toEqual('targetCommit');
                         expect(mergeRequestManagerStub.getComments).toHaveBeenCalledWith(requestId);
-                        expect(catalogManagerStub.getDifference).not.toHaveBeenCalled();
-                        expect(service.processDifferenceResponse).not.toHaveBeenCalled();
+                        
+                        expect(catalogManagerStub.getDifference).toHaveBeenCalledWith(this.copyRequest.sourceCommit,
+                            this.copyRequest.targetCommit, catalogManagerStub.differencePageSize, 0);
+                        expect(service.processDifferenceResponse).toHaveBeenCalledWith(this.copyRequest.recordIri,
+                            '', this.copyRequest.sourceCommit, jasmine.objectContaining({status: 200, statusText: 'OK', url: null, ok: true, type: 4, body: difference}), 
+                            this.copyRequest.recordType);
+                    }, error => {
+                        fail('Observable should have rejected: ' + error);
                     });
                 tick();
             }));
         });
         describe('open', function() {
             beforeEach(function() {
-                mergeRequestManagerStub.isAccepted.and.returnValue(false);
+                mergeRequestManagerStub.requestStatus.and.returnValue('open');
                 this.copyRequest.jsonld[`${MERGEREQ}sourceBranch`] = [{ '@id': sourceBranch['@id'] }];
                 spyOn(service, 'shouldRemoveSource').and.returnValue(false);
             });
@@ -705,7 +724,7 @@ describe('Merge Requests State service', function() {
         }));
         it('successfully and filters are cleared', fakeAsync(function() {
             mergeRequestManagerStub.deleteRequest.and.returnValue(of(null));
-            service.creators = [creatorId, 'other'];
+            service.creators = [creatorUserId, 'other'];
             service.assignees = [assigneeId, 'other'];
             service.deleteRequest(requestObj).subscribe(() => {}, () => fail('Observable should have succeeded'));
             tick();
@@ -717,25 +736,18 @@ describe('Merge Requests State service', function() {
         }));
     });
     it('should get the MergeRequest object from a JSON-LD object', function() {
+        const newcreator = new User({
+            '@id': 'newcreator',
+            '@type': [`${USER}User`],
+            [`${USER}username`]: [{ '@value': 'creatorU'}]
+        });
         userManagerStub.users = [
-            {
-                username: 'creatorU',
-                iri: 'newcreator',
-                firstName: '',
-                lastName: '',
-                external: false,
-                roles: [],
-                email: ''
-            },
-            {
-                username: 'assigneeU',
-                iri: 'newassignee',
-                firstName: '',
-                lastName: '',
-                external: false,
-                roles: [],
-                email: ''
-            }
+            newcreator,
+            new User({
+                '@id': 'newassignee',
+                '@type': [`${USER}User`],
+                [`${USER}username`]: [{ '@value': 'assigneeU'}]
+            }),
         ];
         const jsonld = Object.assign({}, request);
         jsonld[`${DCTERMS}title`] = [{ '@value': 'title' }];
@@ -749,9 +761,9 @@ describe('Merge Requests State service', function() {
             title: 'title',
             description: 'description',
             date: SHORTDATE_DATE_STR,
-            creator: 'creatorU',
+            creator: newcreator,
             recordIri: recordId,
-            assignees: ['assigneeU']
+            assignees: [userManagerStub.users[1]]
         });
         expect(service.getRequestObj(request)).toEqual({
             jsonld: request,

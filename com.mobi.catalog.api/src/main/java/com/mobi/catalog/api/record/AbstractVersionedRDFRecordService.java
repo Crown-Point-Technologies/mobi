@@ -6,18 +6,18 @@ package com.mobi.catalog.api.record;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
@@ -410,7 +410,8 @@ public abstract class AbstractVersionedRDFRecordService<T extends VersionedRDFRe
         record.setProperty(vf.createLiteral(OffsetDateTime.now()), vf.createIRI(_Thing.modified_IRI));
         thingManager.updateObject(record, conn);
         List<Resource> deletedCommits = removeBranch(versionedRDFRecordId, branch, conn);
-        mergeRequestManager.cleanMergeRequests(versionedRDFRecordId, branchId, conn);
+        mergeRequestManager.cleanMergeRequests(versionedRDFRecordId, branchId, getBranchTitle(branch),
+                deletedCommits, conn);
         conn.commit();
         return Optional.of(deletedCommits);
     }
@@ -654,5 +655,10 @@ public abstract class AbstractVersionedRDFRecordService<T extends VersionedRDFRe
                 })
                 .reduce(false, (iri1, iri2) -> iri1 || iri2);
         return isHeadCommit || isParent;
+    }
+
+    private String getBranchTitle(Branch branch) {
+        return branch.getProperty(vf.createIRI(_Thing.title_IRI)).orElseThrow(() ->
+                new IllegalStateException("Branch " + branch.getResource() + " does not have a title")).stringValue();
     }
 }

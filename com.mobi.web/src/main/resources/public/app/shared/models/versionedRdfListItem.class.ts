@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -26,7 +26,8 @@ import { Difference } from './difference.class';
 import { JSONLDObject } from './JSONLDObject.interface';
 
 export class VersionedRdfListItem {
-    active: boolean;
+    changesPageOpen: boolean;
+    currentVersionTitle: string;
     masterBranchIri: string;
     upToDate: boolean;
     userBranch: boolean;
@@ -41,7 +42,6 @@ export class VersionedRdfListItem {
     };
     additions: JSONLDObject[];
     deletions: JSONLDObject[];
-    branches: JSONLDObject[];
     inProgressCommit: Difference;
     merge: {
         active: boolean,
@@ -53,10 +53,8 @@ export class VersionedRdfListItem {
         startIndex: number
     }
     selectedCommit?: Commit
-    tags: JSONLDObject[]
 
     constructor() {
-        this.active = true;
         this.masterBranchIri = '';
         this.upToDate = true;
         this.userBranch = false;
@@ -68,7 +66,6 @@ export class VersionedRdfListItem {
             branchId: '',
             commitId: ''
         };
-        this.branches = [];
         this.additions = [];
         this.deletions = [];
         this.inProgressCommit = new Difference();
@@ -82,6 +79,5 @@ export class VersionedRdfListItem {
             startIndex: 0
         };
         this.selectedCommit = undefined;
-        this.tags = [];
     }
 }

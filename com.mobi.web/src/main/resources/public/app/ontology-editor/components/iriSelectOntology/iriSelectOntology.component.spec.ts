@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -220,12 +220,12 @@ describe('IRI Select Ontology component', function() {
         });
         it('getName should return the name of an iri', function() {
             ontologyStateStub.getBlankNodeValue.and.returnValue('bnode');
-            ontologyStateStub.getEntityNameByListItem.and.returnValue('name');
+            ontologyStateStub.getEntityName.and.returnValue('name');
 
             expect(component.getName(iri, true)).toEqual('bnode');
             expect(ontologyStateStub.getBlankNodeValue).toHaveBeenCalledWith(iri);
             expect(component.getName(iri, false)).toEqual('name');
-            expect(ontologyStateStub.getEntityNameByListItem).toHaveBeenCalledWith(iri);
+            expect(ontologyStateStub.getEntityName).toHaveBeenCalledWith(iri);
         });
         it('add should handle adding a chip', function() {
             spyOn(component, 'getName').and.returnValue('name');

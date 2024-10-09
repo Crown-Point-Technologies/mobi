@@ -5,7 +5,7 @@ package com.mobi.document.translator.rest;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -129,7 +129,7 @@ public class DocumentTranslatorRest {
     public Response translateDocument(@Context HttpServletRequest servletRequest) {
         java.nio.file.Path tempFolder = null;
         try {
-            Map<String, List<Class>> fields = new HashMap<>();
+            Map<String, List<Class<?>>> fields = new HashMap<>();
             fields.put("type", Stream.of(String.class).collect(Collectors.toList()));
             fields.put("ontologyIriString", Stream.of(String.class).collect(Collectors.toList()));
             fields.put("outputName", Stream.of(String.class).collect(Collectors.toList()));

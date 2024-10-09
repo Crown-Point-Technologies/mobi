@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -31,6 +31,7 @@ import { JSONLDObject } from '../../../shared/models/JSONLDObject.interface';
 import { REGEX } from '../../../constants';
 import { splitIRI } from '../../../shared/pipes/splitIRI.pipe';
 import { noWhitespaceValidator } from '../../../shared/validators/noWhitespace.validator';
+import { addLanguageToAnnotations } from '../../../shared/utility';
 
 /**
  * @class ontology-editor.CreateConceptOverlayComponent
@@ -89,7 +90,7 @@ export class CreateConceptOverlayComponent implements OnInit {
             }]
 
         };
-        this.os.addLanguageToNewEntity(concept, this.createForm.controls.language.value);
+        addLanguageToAnnotations(concept, this.createForm.controls.language.value);
         return concept;
     }
     create(): void  {

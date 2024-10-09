@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -24,7 +24,7 @@
  * Object representing a change in the filters for the {@link merge-requests.MergeRequestListComponent}.
  */
 export interface MergeRequestFilterEvent {
-    requestStatus?: boolean,
+    requestStatus?: string,
     creators?: string[],
     assignees?: string[],
     records?: string[]

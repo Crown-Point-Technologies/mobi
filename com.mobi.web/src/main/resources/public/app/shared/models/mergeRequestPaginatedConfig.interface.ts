@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -26,7 +26,7 @@ import { PaginatedConfig } from './paginatedConfig.interface';
  * Paginated configuration specifically for merge requests
  */
 export interface MergeRequestPaginatedConfig extends PaginatedConfig {
-    accepted: boolean,
+    requestStatus: string,
     creators?: string[]
     assignees?: string[]
     records?: string[]

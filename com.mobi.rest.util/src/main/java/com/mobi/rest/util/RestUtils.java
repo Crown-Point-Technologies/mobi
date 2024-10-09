@@ -25,6 +25,7 @@ package com.mobi.rest.util;
 
 import static com.mobi.security.policy.api.xacml.XACML.POLICY_PERMIT_OVERRIDES;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -32,12 +33,17 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.jsonldjava.core.JsonLdApi;
 import com.github.jsonldjava.core.JsonLdOptions;
 import com.github.jsonldjava.utils.JsonUtils;
+import com.mobi.catalog.api.CommitManager;
+import com.mobi.catalog.api.CompiledResourceManager;
+import com.mobi.catalog.api.ontologies.mcat.InProgressCommit;
 import com.mobi.catalog.api.ontologies.mcat.Modify;
 import com.mobi.catalog.api.ontologies.mcat.VersionedRDFRecord;
+import com.mobi.catalog.config.CatalogConfigProvider;
 import com.mobi.exception.MobiException;
 import com.mobi.jaas.api.engines.EngineManager;
 import com.mobi.jaas.api.ontologies.usermanagement.User;
 import com.mobi.persistence.utils.Models;
+import com.mobi.persistence.utils.ParsedModel;
 import com.mobi.persistence.utils.SkolemizedStatementIterable;
 import com.mobi.persistence.utils.api.BNodeService;
 import com.mobi.rdf.orm.Thing;
@@ -46,8 +52,6 @@ import com.mobi.security.policy.api.Decision;
 import com.mobi.security.policy.api.PDP;
 import com.mobi.security.policy.api.Request;
 import com.mobi.web.security.util.AuthenticationProps;
-import net.sf.json.JSONArray;
-import net.sf.json.JSONObject;
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
 import org.apache.commons.fileupload.FileUploadException;
@@ -59,11 +63,15 @@ import org.eclipse.rdf4j.model.BNode;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Model;
+import org.eclipse.rdf4j.model.ModelFactory;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.ValueFactory;
+import org.eclipse.rdf4j.model.base.CoreDatatype;
 import org.eclipse.rdf4j.model.impl.LinkedHashModel;
 import org.eclipse.rdf4j.model.impl.ValidatingValueFactory;
+import org.eclipse.rdf4j.query.TupleQueryResult;
+import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFHandler;
 import org.eclipse.rdf4j.rio.RDFParser;
@@ -79,6 +87,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringWriter;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -94,6 +104,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.container.ContainerRequestContext;
@@ -101,8 +112,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
+/**
+ * A utility class for various actions and variables needed within the REST services.
+ */
 public class RestUtils {
-
     private static final Logger LOG = LoggerFactory.getLogger(RestUtils.class);
     private static final ObjectMapper mapper = new ObjectMapper();
     public static final String XLSX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -122,17 +135,12 @@ public class RestUtils {
      * @return A RDFFormat object with the requested format.
      */
     public static RDFFormat getRDFFormat(String format) {
-        switch (format.toLowerCase()) {
-            case "turtle":
-                return RDFFormat.TURTLE;
-            case "trig":
-                return RDFFormat.TRIG;
-            case "rdf/xml":
-                return RDFFormat.RDFXML;
-            case "jsonld":
-            default:
-                return RDFFormat.JSONLD;
-        }
+        return switch (format.toLowerCase()) {
+            case "turtle" -> RDFFormat.TURTLE;
+            case "trig" -> RDFFormat.TRIG;
+            case "rdf/xml" -> RDFFormat.RDFXML;
+            default -> RDFFormat.JSONLD;
+        };
     }
 
     /**
@@ -147,14 +155,11 @@ public class RestUtils {
             return RDFFormat.JSONLD; // default value is JSON-LD
         }
 
-        switch (mimeType.toLowerCase()) {
-            case TURTLE_MIME_TYPE:
-                return RDFFormat.TURTLE;
-            case RDFXML_MIME_TYPE:
-                return RDFFormat.RDFXML;
-            default:
-                return RDFFormat.JSONLD;
-        }
+        return switch (mimeType.toLowerCase()) {
+            case TURTLE_MIME_TYPE -> RDFFormat.TURTLE;
+            case RDFXML_MIME_TYPE -> RDFFormat.RDFXML;
+            default -> RDFFormat.JSONLD;
+        };
     }
 
     /**
@@ -168,25 +173,16 @@ public class RestUtils {
             fileExtension = "";
         }
 
-        switch (fileExtension) {
-            case "xlsx":
-                return XLSX_MIME_TYPE;
-            case "xls":
-                return XLS_MIME_TYPE;
-            case "csv":
-                return CSV_MIME_TYPE;
-            case "tsv":
-                return TSV_MIME_TYPE;
-            case "ttl":
-                return TURTLE_MIME_TYPE;
-            case "jsonld":
-                return LDJSON_MIME_TYPE;
-            case "rdf":
-                return RDFXML_MIME_TYPE;
-            case "json":
-            default:
-                return JSON_MIME_TYPE;
-        }
+        return switch (fileExtension) {
+            case "xlsx" -> XLSX_MIME_TYPE;
+            case "xls" -> XLS_MIME_TYPE;
+            case "csv" -> CSV_MIME_TYPE;
+            case "tsv" -> TSV_MIME_TYPE;
+            case "ttl" -> TURTLE_MIME_TYPE;
+            case "jsonld" -> LDJSON_MIME_TYPE;
+            case "rdf" -> RDFXML_MIME_TYPE;
+            default -> JSON_MIME_TYPE;
+        };
     }
 
     /**
@@ -216,6 +212,92 @@ public class RestUtils {
      */
     public static String modelToString(Model model, String format) {
         return modelToString(model, getRDFFormat(format));
+    }
+
+    /**
+     * Gets a {@link Model} of the provided {@link InputStream}. Deterministically skolemizes any BNode in the model.
+     *
+     * @param fileInputStream The {@link InputStream} to process.
+     * @param fileExtension The extension of the file associated with the fileInputStream.
+     * @param bNodesMap The {@link Map} of BNodes to their deterministically skolemized IRIs. Will be populated in
+     *                  method.
+     * @param modelFactory The {@link ModelFactory} used to create the model.
+     * @param bNodeService The {@link BNodeService} used for skolemization.
+     * @return A {@link Model} with deterministically skolemized BNodes.
+     * @throws IOException When an error occurs processing the {@link InputStream}
+     */
+    public static Model getUploadedModel(InputStream fileInputStream, String fileExtension, Map<BNode, IRI> bNodesMap,
+                                         ModelFactory modelFactory, BNodeService bNodeService)
+            throws IOException {
+        // Load uploaded ontology into a skolemized model
+        ParsedModel parsedModel = Models.createSkolemizedModel(fileExtension, fileInputStream,
+                modelFactory, bNodeService, bNodesMap);
+
+        if ("trig".equalsIgnoreCase(parsedModel.getRdfFormatName())) {
+            throw new IllegalArgumentException("TriG data is not supported for upload changes.");
+        }
+
+        return parsedModel.getModel();
+    }
+
+    /**
+     * Gets a {@link Model} from the provided Record/Branch/Commit in the Catalog.
+     * Deterministically skolemizes any
+     * BNode in the model.
+     *
+     * @param recordId  The {@link Resource} of the recordId.
+     * @param branchId  The {@link Resource} of the branchId.
+     * @param commitId  The {@link Resource} of the commitId.
+     * @param bNodesMap The {@link Map} of BNodes to their deterministically
+     *                  skolemized IRIs. Will be populated in
+     *                  method.
+     * @param conn      A RepositoryConnection for lookup.
+     * @return A {@link Model} with deterministically skolemized BNodes.
+     */
+    public static Model getCurrentModel(Resource recordId, Resource branchId, Resource commitId,
+            Map<BNode, IRI> bNodesMap, RepositoryConnection conn, BNodeService bNodeService,
+            CompiledResourceManager compiledResourceManager) {
+        // Load existing ontology into a skolemized model
+        return bNodeService.deterministicSkolemize(
+                compiledResourceManager.getCompiledResource(recordId, branchId, commitId, conn), bNodesMap);
+    }
+
+    /**
+     * Gets the Resource for the InProgressCommit associated with the provided User and the Record identified by the
+     * provided Resource. If that User does not have an InProgressCommit, a new one will be created and that Resource
+     * will be returned.
+     *
+     * @param user     the User with the InProgressCommit
+     * @param recordId the Resource identifying the Record with the InProgressCommit
+     * @param conn     A repository connection for lookup.
+     * @param commitManager  The {@link CommitManager} instance for managing commits.
+     * @param configProvider The {@link CatalogConfigProvider} instance for providing catalog configurations.
+     * @return a Resource which identifies the InProgressCommit associated with the User for the Record
+     */
+    public static Resource getInProgressCommitIRI(User user, Resource recordId, RepositoryConnection conn,
+            CommitManager commitManager, CatalogConfigProvider configProvider) {
+        Optional<InProgressCommit> optional = commitManager.getInProgressCommitOpt(configProvider.getLocalCatalogIRI(),
+                recordId, user, conn);
+        if (optional.isPresent()) {
+            return optional.get().getResource();
+        } else {
+            InProgressCommit inProgressCommit = commitManager.createInProgressCommit(user);
+            commitManager.addInProgressCommit(configProvider.getLocalCatalogIRI(), recordId, inProgressCommit, conn);
+            return inProgressCommit.getResource();
+        }
+    }
+
+    /**
+     * Calculates the garbage collection time in milliseconds.
+     *
+     * @return The total garbage collection time.
+     */
+    public static long getGarbageCollectionTime() {
+        long collectionTime = 0;
+        for (GarbageCollectorMXBean garbageCollectorMXBean : ManagementFactory.getGarbageCollectorMXBeans()) {
+            collectionTime += garbageCollectorMXBean.getCollectionTime();
+        }
+        return collectionTime;
     }
 
     /**
@@ -428,19 +510,13 @@ public class RestUtils {
      * @return The default file extension for the requested format.
      */
     public static String getRDFFormatFileExtension(String format) {
-        switch (format.toLowerCase()) {
-            case "turtle":
-                return RDFFormat.TURTLE.getDefaultFileExtension();
-            case "rdf/xml":
-                return RDFFormat.RDFXML.getDefaultFileExtension();
-            case "trig":
-                return RDFFormat.TRIG.getDefaultFileExtension();
-            case "owl/xml":
-                return "owx";
-            case "jsonld":
-            default:
-                return RDFFormat.JSONLD.getDefaultFileExtension();
-        }
+        return switch (format.toLowerCase()) {
+            case "turtle" -> RDFFormat.TURTLE.getDefaultFileExtension();
+            case "rdf/xml" -> RDFFormat.RDFXML.getDefaultFileExtension();
+            case "trig" -> RDFFormat.TRIG.getDefaultFileExtension();
+            case "owl/xml" -> "owx";
+            default -> RDFFormat.JSONLD.getDefaultFileExtension();
+        };
     }
 
     /**
@@ -450,19 +526,13 @@ public class RestUtils {
      * @return The default MIME type for the requested format.
      */
     public static String getRDFFormatMimeType(String format) {
-        switch (format.toLowerCase()) {
-            case "turtle":
-                return RDFFormat.TURTLE.getDefaultMIMEType();
-            case "rdf/xml":
-                return RDFFormat.RDFXML.getDefaultMIMEType();
-            case "trig":
-                return RDFFormat.TRIG.getDefaultMIMEType();
-            case "owl/xml":
-                return "application/owl+xml";
-            case "jsonld":
-            default:
-                return RDFFormat.JSONLD.getDefaultMIMEType();
-        }
+        return switch (format.toLowerCase()) {
+            case "turtle" -> RDFFormat.TURTLE.getDefaultMIMEType();
+            case "rdf/xml" -> RDFFormat.RDFXML.getDefaultMIMEType();
+            case "trig" -> RDFFormat.TRIG.getDefaultMIMEType();
+            case "owl/xml" -> "application/owl+xml";
+            default -> RDFFormat.JSONLD.getDefaultMIMEType();
+        };
     }
 
     /**
@@ -479,6 +549,19 @@ public class RestUtils {
     }
 
     /**
+     * Retrieves the User associated with a Request using the passed EngineManager. If the User cannot be found, throws
+     * a 401 Response.
+     *
+     * @param servletRequest The servletRequest of a Request.
+     * @param engineManager  The EngineManager to use when attempting to retrieve the User.
+     * @return The User who made the Request if found; throws a 401 otherwise.
+     */
+    public static User getActiveUser(HttpServletRequest servletRequest, EngineManager engineManager) {
+        return engineManager.retrieveUser(getActiveUsername(servletRequest)).orElseThrow(() ->
+                ErrorUtils.sendError("User not found", Response.Status.UNAUTHORIZED));
+    }
+
+    /**
      * Retrieves the username associated with a Request. If the username cannot be found, throws a 401 Response.
      *
      * @param context The context of a Request.
@@ -491,19 +574,6 @@ public class RestUtils {
         } else {
             return result.toString();
         }
-    }
-
-    /**
-     * Retrieves the User associated with a Request using the passed EngineManager. If the User cannot be found, throws
-     * a 401 Response.
-     *
-     * @param servletRequest The servletRequest of a Request.
-     * @param engineManager  The EngineManager to use when attempting to retrieve the User.
-     * @return The User who made the Request if found; throws a 401 otherwise.
-     */
-    public static User getActiveUser(HttpServletRequest servletRequest, EngineManager engineManager) {
-        return engineManager.retrieveUser(getActiveUsername(servletRequest)).orElseThrow(() ->
-                ErrorUtils.sendError("User not found", Response.Status.UNAUTHORIZED));
     }
 
     /**
@@ -578,24 +648,13 @@ public class RestUtils {
     }
 
     /**
-     * Retrieves a single Entity object from a JSON-LD string and returns it as a JSONObject. Looks within the first
+     * Retrieves a single Entity object from a JSON-LD string and returns it as a ObjectNode. Looks within the first
      * context object if present.
      *
      * @param json A JSON-LD string
      * @return The first object representing a single Entity present in the JSON-LD array.
      */
-    public static JSONObject getObjectFromJsonld(String json) {
-        JSONArray array = JSONArray.fromObject(json);
-        JSONObject firstObject = Optional.ofNullable(array.optJSONObject(0)).orElse(new JSONObject());
-        if (firstObject.containsKey("@graph")) {
-            firstObject = Optional.ofNullable(firstObject.getJSONArray("@graph").optJSONObject(0))
-                    .orElse(new JSONObject());
-        }
-        return firstObject;
-    }
-
-    public static ObjectNode getObjectNodeFromJsonld(String json) {
-        ObjectMapper mapper = new ObjectMapper();
+    public static ObjectNode getObjectFromJsonld(String json) {
         JsonNode jsonNode = null;
         try {
             jsonNode = mapper.readTree(json);
@@ -615,38 +674,47 @@ public class RestUtils {
     }
 
     /**
+     * Creates an {@link ArrayNode} from a String containing JSON.
+     *
+     * @param json A String containing JSON
+     * @return An ArrayNode of the parsed JSON
+     */
+    public static ArrayNode getArrayNodeFromJson(String json) {
+        try {
+            return mapper.readValue(json, ArrayNode.class);
+        } catch (JsonProcessingException e) {
+            throw new MobiException(e);
+        }
+    }
+
+    /**
+     * Creates an {@link ObjectNode} from a String containing JSON.
+     *
+     * @param json A String containing JSON
+     * @return An ObjectNode of the parsed JSON
+     */
+    public static ObjectNode getObjectNodeFromJson(String json) {
+        try {
+            return mapper.readValue(json, ObjectNode.class);
+        } catch (JsonProcessingException e) {
+            throw new MobiException(e);
+        }
+    }
+
+    public static boolean arrayContains(ArrayNode array, String value) {
+        Stream<JsonNode> nodeStream = StreamSupport.stream(array.spliterator(), false);
+        return nodeStream.anyMatch(node -> node.asText().equals(value));
+    }
+
+    /**
      * Retrieves a single entity object, of the type specified, from a JSON-LD string and returns it as a
-     * {@link JSONObject}.
+     * {@link JsonNode}.
      *
      * @param json A JSON-LD string
      * @param type The entity type that is required.
      * @return The first object representing the specified type of entity present in the JSON-LD.
      */
-    public static JSONObject getTypedObjectFromJsonld(String json, String type) {
-        long start = System.currentTimeMillis();
-        try {
-            List<JSONObject> objects = new ArrayList<>();
-            JSONArray array = JSONArray.fromObject(json);
-
-            array.forEach(o -> objects.add(JSONObject.fromObject(o)));
-
-            for (JSONObject o : objects) {
-                if (o.isArray()) {
-                    o = getTypedObjectFromJsonld(o.toString(), type);
-                } else if (o.containsKey("@graph")) {
-                    o = getTypedObjectFromJsonld(JSONArray.fromObject(o.get("@graph")).toString(), type);
-                }
-                if (o != null && o.containsKey("@type") && JSONArray.fromObject(o.get("@type")).contains(type)) {
-                    return o;
-                }
-            }
-            return null;
-        } finally {
-            LOG.trace("getTypedObjectFromJsonld took {}ms", System.currentTimeMillis() - start);
-        }
-    }
-
-    public static JsonNode getTypedObjectNodeFromJsonld(String json, String type) {
+    public static JsonNode getTypedObjectFromJsonld(String json, String type) {
         long start = System.currentTimeMillis();
         JsonNode arrayNode = null;
         try {
@@ -654,9 +722,9 @@ public class RestUtils {
 
             for (JsonNode o : arrayNode) {
                 if (o.isArray()) {
-                    o = getTypedObjectNodeFromJsonld(o.toString(), type);
+                    o = getTypedObjectFromJsonld(o.toString(), type);
                 } else if (o.has("@graph")) {
-                    o = getTypedObjectNodeFromJsonld(o.get("@graph").toString(), type);
+                    o = getTypedObjectFromJsonld(o.get("@graph").toString(), type);
                 }
                 if (o != null && o.has("@type")
                         && mapper.convertValue(o.get("@type"), ArrayList.class).contains(type)) {
@@ -687,43 +755,35 @@ public class RestUtils {
     }
 
     /**
-     * Converts a Thing into a JSONObject by the first object of a specific type in the JSON-LD serialization of the
+     * Converts a Thing into a JsonNode by the first object of a specific type in the JSON-LD serialization of the
      * Thing's Model.
      *
-     * @param thing The Thing to convert into a JSONObject.
+     * @param thing The Thing to convert into a JsonNode.
      * @param type  The type of the {@link Thing} passed in.
-     * @return The JSONObject with the JSON-LD of the Thing entity from its Model.
+     * @return The JsonNode with the JSON-LD of the Thing entity from its Model.
      */
-    public static JSONObject thingToJsonObject(Thing thing, String type) {
+    public static JsonNode thingToObjectNode(Thing thing, String type) {
         return getTypedObjectFromJsonld(modelToString(thing.getModel(), RDFFormat.JSONLD), type);
     }
 
-    public static JsonNode thingToObjectNode(Thing thing, String type) {
-        return getTypedObjectNodeFromJsonld(modelToString(thing.getModel(), RDFFormat.JSONLD), type);
-    }
-
     /**
-     * Converts a Thing into a skolemized JSONObject by the first object of a specific type in the JSON-LD serialization
+     * Converts a Thing into a skolemized JsonNode by the first object of a specific type in the JSON-LD serialization
      * of the Thing's Model.
      *
-     * @param thing        The Thing to convert into a JSONObject.
+     * @param thing        The Thing to convert into a JsonNode.
      * @param type         The type of the {@link Thing} passed in.
      * @param bNodeService The {@link BNodeService} to use.
-     * @return The JSONObject with the JSON-LD of the Thing entity from its Model.
+     * @return The JsonNode with the JSON-LD of the Thing entity from its Model.
      */
-    public static JSONObject thingToSkolemizedJsonObject(Thing thing, String type, BNodeService bNodeService) {
-        return getTypedObjectFromJsonld(
-                modelToSkolemizedString(thing.getModel(), RDFFormat.JSONLD, bNodeService), type);
-    }
-
     public static JsonNode thingToSkolemizedObjectNode(Thing thing, String type, BNodeService bNodeService) {
-        return getTypedObjectNodeFromJsonld(
+        return getTypedObjectFromJsonld(
                 modelToSkolemizedString(thing.getModel(), RDFFormat.JSONLD, bNodeService), type);
     }
 
     /**
      * Creates a {@link Response} for a page of a sorted limited offset {@link Set} of {@link Thing}s based on the
-     * return type of the passed function using the passed full {@link Set} of {@link org.eclipse.rdf4j.model.Resource}s.
+     * return type of the passed function using the passed full {@link Set} of
+     * {@link org.eclipse.rdf4j.model.Resource}s.
      *
      * @param <T>            A class that extends {@link Thing}.
      * @param uriInfo        The URI information of the request.
@@ -736,45 +796,9 @@ public class RestUtils {
      * @param type           The type of the {@link Thing} to be returned
      * @param bNodeService   The {@link BNodeService} to use.
      * @return A {@link Response} with a page of {@link Thing}s that has been filtered, sorted, and limited and headers
-     * for the total size and links to the next and prev pages if present.
+     *      for the total size and links to the next and prev pages if present.
      */
     public static <T extends Thing> Response createPaginatedThingResponse(UriInfo uriInfo, Set<T> things,
-                                                                          IRI sortIRI, int offset, int limit,
-                                                                          boolean asc,
-                                                                          Function<T, Boolean> filterFunction,
-                                                                          String type,
-                                                                          BNodeService bNodeService) {
-        long start = System.currentTimeMillis();
-        try {
-            if (offset > things.size()) {
-                throw ErrorUtils.sendError("Offset exceeds total size", Response.Status.BAD_REQUEST);
-            }
-            Comparator<T> comparator = Comparator.comparing(dist -> dist.getProperty(sortIRI).get().stringValue());
-
-            Stream<T> stream = things.stream();
-
-            if (!asc) {
-                comparator = comparator.reversed();
-            }
-
-            if (filterFunction != null) {
-                stream = stream.filter(filterFunction::apply);
-            }
-
-            List<T> filteredThings = stream.collect(Collectors.toList());
-            List<T> result = filteredThings.stream()
-                    .sorted(comparator)
-                    .skip(offset)
-                    .limit(limit)
-                    .collect(Collectors.toList());
-
-            return createPaginatedResponse(uriInfo, result, filteredThings.size(), limit, offset, type, bNodeService);
-        } finally {
-            LOG.trace("createPaginatedThingResponse took {}ms", System.currentTimeMillis() - start);
-        }
-    }
-
-    public static <T extends Thing> Response createPaginatedThingResponseJackson(UriInfo uriInfo, Set<T> things,
                                                                                  IRI sortIRI, int offset, int limit,
                                                                                  boolean asc,
                                                                                  Function<T, Boolean> filterFunction,
@@ -785,7 +809,8 @@ public class RestUtils {
             if (offset > things.size()) {
                 throw ErrorUtils.sendError("Offset exceeds total size", Response.Status.BAD_REQUEST);
             }
-            Comparator<T> comparator = Comparator.comparing(dist -> dist.getProperty(sortIRI).get().stringValue());
+            Comparator<T> comparator = Comparator.comparing(dist -> dist.getProperty(sortIRI)
+                    .orElse(vf.createLiteral("")).stringValue());
 
             Stream<T> stream = things.stream();
 
@@ -797,14 +822,14 @@ public class RestUtils {
                 stream = stream.filter(filterFunction::apply);
             }
 
-            List<T> filteredThings = stream.collect(Collectors.toList());
+            List<T> filteredThings = stream.toList();
             List<T> result = filteredThings.stream()
                     .sorted(comparator)
                     .skip(offset)
                     .limit(limit)
                     .collect(Collectors.toList());
 
-            return createPaginatedResponseJackson(uriInfo, result, filteredThings.size(), limit, offset, type,
+            return createPaginatedResponse(uriInfo, result, filteredThings.size(), limit, offset, type,
                     bNodeService);
         } finally {
             LOG.trace("createPaginatedThingResponse took {}ms", System.currentTimeMillis() - start);
@@ -824,7 +849,7 @@ public class RestUtils {
      * @param offset    The offset for the current page.
      * @param type      The type of the {@link Thing} to be returned
      * @return A Response with the current page of Things and headers for the total size and links to the next and prev
-     * pages if present.
+     *      pages if present.
      */
     public static <T extends Thing> Response createPaginatedResponse(UriInfo uriInfo, Collection<T> items,
                                                                      int totalSize, int limit, int offset,
@@ -846,31 +871,9 @@ public class RestUtils {
      * @param type         The type of the {@link Thing} to be returned
      * @param bNodeService The {@link BNodeService} to use.
      * @return A Response with the current page of Things and headers for the total size and links to the next and prev
-     * pages if present.
+     *      pages if present.
      */
     public static <T extends Thing> Response createPaginatedResponse(UriInfo uriInfo, Collection<T> items,
-                                                                     int totalSize, int limit, int offset,
-                                                                     String type, BNodeService bNodeService) {
-        JSONArray results;
-        long start = System.currentTimeMillis();
-
-        try {
-            if (bNodeService == null) {
-                results = JSONArray.fromObject(items.stream()
-                        .map(thing -> thingToJsonObject(thing, type))
-                        .collect(Collectors.toList()));
-            } else {
-                results = JSONArray.fromObject(items.stream()
-                        .map(thing -> thingToSkolemizedJsonObject(thing, type, bNodeService))
-                        .collect(Collectors.toList()));
-            }
-            return createPaginatedResponseWithJson(uriInfo, results, totalSize, limit, offset);
-        } finally {
-            LOG.trace("createPaginatedResponse took {}ms", System.currentTimeMillis() - start);
-        }
-    }
-
-    public static <T extends Thing> Response createPaginatedResponseJackson(UriInfo uriInfo, Collection<T> items,
                                                                             int totalSize, int limit,
                                                                             int offset, String type,
                                                                             BNodeService bNodeService) {
@@ -887,7 +890,7 @@ public class RestUtils {
                         .map(thing -> thingToSkolemizedObjectNode(thing, type, bNodeService))
                         .collect(Collectors.toList()));
             }
-            return createPaginatedResponseWithJsonNode(uriInfo, results, totalSize, limit, offset);
+            return createPaginatedResponse(uriInfo, results, totalSize, limit, offset);
         } finally {
             LOG.trace("createPaginatedResponse took {}ms", System.currentTimeMillis() - start);
         }
@@ -904,29 +907,10 @@ public class RestUtils {
      * @param limit     The limit for each page.
      * @param offset    The offset for the current page.
      * @return A Response with the current page of Things and headers for the total size and links to the next and prev
-     * pages if present.
+     *      pages if present.
      */
-    public static Response createPaginatedResponseWithJson(UriInfo uriInfo, JSONArray items, int totalSize, int limit,
-                                                           int offset) {
-        long start = System.currentTimeMillis();
-        try {
-            LinksUtils.validateParams(limit, offset);
-            Links links = LinksUtils.buildLinks(uriInfo, items.size(), totalSize, limit, offset);
-            Response.ResponseBuilder response = Response.ok(items).header("X-Total-Count", totalSize);
-            if (links.getNext() != null) {
-                response = response.link(links.getBase() + links.getNext(), "next");
-            }
-            if (links.getPrev() != null) {
-                response = response.link(links.getBase() + links.getPrev(), "prev");
-            }
-            return response.build();
-        } finally {
-            LOG.trace("createPaginatedResponseWithJson took {}ms", System.currentTimeMillis() - start);
-        }
-    }
-
-    public static Response createPaginatedResponseWithJsonNode(UriInfo uriInfo, ArrayNode items,
-                                                               int totalSize, int limit, int offset) {
+    public static Response createPaginatedResponse(UriInfo uriInfo, ArrayNode items, int totalSize, int limit,
+                                                   int offset) {
         long start = System.currentTimeMillis();
         try {
             LinksUtils.validateParams(limit, offset);
@@ -1022,6 +1006,40 @@ public class RestUtils {
     }
 
     /**
+     * Creates a {@link MobiWebException} containing a 401 response with the error message and error details provided
+     * in the body of the response.
+     *
+     * @param throwable The {@link Throwable} to create a JSON error object from.
+     * @return A {@link MobiWebException} of a 401 with error information in the body.
+     */
+    public static MobiWebException getErrorObjUnauthorized(Throwable throwable) {
+        ObjectNode objectNode = createJsonErrorObject(throwable, Models.ERROR_OBJECT_DELIMITER);
+        Response response = Response
+                .status(Response.Status.UNAUTHORIZED)
+                .type(MediaType.APPLICATION_JSON_TYPE)
+                .entity(objectNode.toString())
+                .build();
+        return ErrorUtils.sendError(throwable, throwable.getMessage(), response);
+    }
+
+    /**
+     * Creates a {@link MobiWebException} containing a 404 response with the error message and error details provided
+     * in the body of the response.
+     *
+     * @param throwable The {@link Throwable} to create a JSON error object from.
+     * @return A {@link MobiWebException} of a 404 with error information in the body.
+     */
+    public static MobiWebException getErrorObjNotFound(Throwable throwable) {
+        ObjectNode objectNode = createJsonErrorObject(throwable, Models.ERROR_OBJECT_DELIMITER);
+        Response response = Response
+                .status(Response.Status.NOT_FOUND)
+                .type(MediaType.APPLICATION_JSON_TYPE)
+                .entity(objectNode.toString())
+                .build();
+        return ErrorUtils.sendError(throwable, throwable.getMessage(), response);
+    }
+
+    /**
      * Creates a {@link MobiWebException} containing a 500 response with the error message provided in the body of the
      * response.
      *
@@ -1039,6 +1057,23 @@ public class RestUtils {
     }
 
     /**
+     * Creates a {@link MobiWebException} containing a 500 response with the error message provided in the body of the
+     * response.
+     *
+     * @param throwable The {@link Throwable} to create a JSON error object from.
+     * @param overrideObjectNode The {@link ObjectNode} entity error object node
+     * @return A {@link MobiWebException} of a 500 with error information in the body.
+     */
+    public static MobiWebException getErrorObjInternalServerError(Throwable throwable, ObjectNode overrideObjectNode) {
+        Response response = Response
+                .status(Response.Status.INTERNAL_SERVER_ERROR)
+                .type(MediaType.APPLICATION_JSON_TYPE)
+                .entity(overrideObjectNode.toString())
+                .build();
+        return ErrorUtils.sendError(throwable, throwable.getMessage(), response);
+    }
+
+    /**
      * Retrieves the multipart/form-data containing file information from the provided {@link HttpServletRequest}.
      * Uses the provided map to determine the form data fields. The key in the fields map represents the field name to
      * populate in the return map. The value in the fields map is a list containing the Class of the field. If more than
@@ -1049,7 +1084,8 @@ public class RestUtils {
      * @param fields         A {@link Map} of field name to the Class of the field.
      * @return A map of the field name to the corresponding form data field Object.
      */
-    public static Map<String, Object> getFormData(HttpServletRequest servletRequest, Map<String, List<Class>> fields) {
+    public static Map<String, Object> getFormData(HttpServletRequest servletRequest, Map<String,
+            List<Class<?>>> fields) {
         try {
             Map<String, Object> parsedValues = new HashMap<>();
             Set<String> fieldNames = fields.keySet();
@@ -1061,21 +1097,21 @@ public class RestUtils {
                 try (InputStream stream = item.openStream()) {
                     if (item.isFormField()) {
                         if (fieldNames.contains(name)) {
-                            List<Class> classes = fields.get(name);
+                            List<Class<?>> classes = fields.get(name);
                             if (classes.size() > 1) {
                                 // Is a Collection of Type
-                                Class collectionClass = classes.get(0);
-                                Class typeClass = classes.get(1);
+                                Class<?> collectionClass = classes.get(0);
+                                Class<?> typeClass = classes.get(1);
                                 if (!parsedValues.containsKey(name)) {
                                     if (collectionClass == Set.class) {
                                         parsedValues.put(name, new HashSet<>());
                                     } else if (collectionClass == List.class) {
                                         parsedValues.put(name, new ArrayList<>());
                                     } else {
-                                        throw new MobiException("Invalid parent class type. Must provide a collection.");
+                                        throw new MobiException("Invalid parent class type. Must provide collection.");
                                     }
                                 }
-                                Collection collection = (Collection) parsedValues.get(name);
+                                Collection<Object> collection = (Collection<Object>) parsedValues.get(name);
                                 collection.add(getValue(typeClass, stream));
                                 parsedValues.put(name, collection);
                             } else {
@@ -1099,7 +1135,7 @@ public class RestUtils {
         }
     }
 
-    private static Object getValue(Class clazz, InputStream stream) throws IOException {
+    private static Object getValue(Class<?> clazz, InputStream stream) throws IOException {
         try {
             if (clazz == String.class) {
                 return Streams.asString(stream);
@@ -1151,5 +1187,47 @@ public class RestUtils {
                 vf.createIRI(POLICY_PERMIT_OVERRIDES));
 
         return response.getDecision();
+    }
+
+    /**
+     * Converts a tuple query ResultSet into List of ObjectNodes which have properties for each specified binding.
+     * Converts literal bindings into the appropriate data types and IRIs into strings.
+     *
+     * @param result The query results to turn into a list of object nodes
+     * @param displayBindings The specific query bindings that should be included in the generated ObjectNodes
+     * @return List of ObjectNodes
+     */
+    public static List<ObjectNode> convertToObjectNodes(TupleQueryResult result, Collection<String> displayBindings) {
+        List<ObjectNode> records = new ArrayList<>();
+        result.forEach(bindings -> {
+            ObjectNode recordObjectNode = mapper.createObjectNode();
+            for (String key: displayBindings) {
+                Value value = bindings.getValue(key);
+                if (value == null) {
+                    recordObjectNode.set(key, null);
+                } else if (value.isLiteral()) {
+                    Literal literal = (Literal) value;
+                    if (literal.getDatatype().equals(CoreDatatype.XSD.BOOLEAN.getIri())) {
+                        recordObjectNode.put(key, literal.booleanValue());
+                    } else if (literal.getDatatype().equals(CoreDatatype.XSD.FLOAT.getIri())) {
+                        recordObjectNode.put(key, literal.floatValue());
+                    } else if (literal.getDatatype().equals(CoreDatatype.XSD.DOUBLE.getIri())) {
+                        recordObjectNode.put(key, literal.doubleValue());
+                    } else if (literal.getDatatype().equals(CoreDatatype.XSD.DECIMAL.getIri())) {
+                        recordObjectNode.put(key, literal.decimalValue());
+                    } else if (literal.getDatatype().equals(CoreDatatype.XSD.INTEGER.getIri())) {
+                        recordObjectNode.put(key, literal.integerValue());
+                    } else if (literal.getDatatype().equals(CoreDatatype.XSD.LONG.getIri())) {
+                        recordObjectNode.put(key, literal.longValue());
+                    } else {
+                        recordObjectNode.put(key, literal.stringValue());
+                    }
+                } else {
+                    recordObjectNode.put(key, value.stringValue());
+                }
+            }
+            records.add(recordObjectNode);
+        });
+        return records;
     }
 }

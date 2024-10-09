@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -25,8 +25,8 @@ import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { PageEvent } from '@angular/material/paginator';
 import { MatDialog } from '@angular/material/dialog';
 import { get } from 'lodash';
-import { Observable, of, throwError } from 'rxjs';
-import { finalize, switchMap } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { finalize, switchMap, map } from 'rxjs/operators';
 
 import { CATALOG, DELIM, POLICY, RDF } from '../../../prefixes';
 import { ConfirmModalComponent } from '../../../shared/components/confirmModal/confirmModal.component';
@@ -44,6 +44,8 @@ import { CreateMappingOverlayComponent } from '../createMappingOverlay/createMap
 import { DownloadMappingOverlayComponent } from '../downloadMappingOverlay/downloadMappingOverlay.component';
 import { ViewMappingModalComponent } from '../viewMappingModal/viewMappingModal.component';
 import { getDate, getDctermsValue, getPropertyId } from '../../../shared/utility';
+import { IncompatibleWarningModalComponent } from '../incompatible-warning-modal/incompatible-warning-modal.component';
+import { XACMLRequest } from "../../../shared/models/XACMLRequest.interface";
 
 /**
  * @class mapper.MappingSelectPageComponent
@@ -61,17 +63,19 @@ export class MappingSelectPageComponent implements OnInit {
     results: MappingRecord[] = [];
     searchText = '';
     submittedSearch = false;
+    canCreate = false;
 
     @ViewChild('mappingList', { static: true }) mappingList: ElementRef;
 
     constructor(public state: MapperStateService, private mm: MappingManagerService, private cm: CatalogManagerService,
-        private dialog: MatDialog, private spinnerSvc: ProgressSpinnerService,
-        private pep: PolicyEnforcementService, private toast: ToastService) {}
+        private dialog: MatDialog, private spinnerSvc: ProgressSpinnerService, private pep: PolicyEnforcementService,
+        private toast: ToastService) {}
     
     ngOnInit(): void {
         this.searchText = this.state.paginationConfig.searchText;
         this.setResults();
         this.submittedSearch = !!this.searchText;
+        this._checkCreatePermission();
     }
     searchRecords(): void {
         this.state.resetPagination();
@@ -114,9 +118,16 @@ export class MappingSelectPageComponent implements OnInit {
     }
     run(mappingRecord: MappingRecord): void {
         this.setStateIfCompatible(mappingRecord)
-            .subscribe(() => {
-                this.state.highlightIndexes = this.state.getMappedColumns();
-                this.state.step = this.state.fileUploadStep;
+            .subscribe( (nextStep: string) => {
+                if (nextStep === 'default') {
+                    this.state.highlightIndexes = this.state.getMappedColumns();
+                    this.state.step = this.state.fileUploadStep;
+                } else if (nextStep === 'edit') {
+                    this.state.setIriMap().subscribe(() => {
+                        this.state.editMapping = true;
+                        this.state.step = this.state.fileUploadStep;
+                    });
+                }
             }, error => error ? this.toast.createErrorToast(error) : undefined);
     }
     edit(mappingRecord: MappingRecord): void {
@@ -131,11 +142,16 @@ export class MappingSelectPageComponent implements OnInit {
             .subscribe(response => {
                 const hasPermission = response !== this.pep.deny;
                 if (hasPermission) {
-                    this.setStateIfCompatible(mappingRecord)
-                        .pipe(switchMap(() => this.state.setIriMap())).subscribe(() => {
-                            this.state.editMapping = true;
-                            this.state.step = this.state.fileUploadStep;
-                        }, error => error ? this.toast.createErrorToast(error) : undefined);
+                    this.setStateIfCompatible(mappingRecord).pipe(
+                        switchMap((nextStep:string) => {
+                            if (nextStep === 'edit' || nextStep === 'default') {
+                                return this.state.setIriMap();
+                            }
+                        })
+                    ).subscribe(() => {
+                        this.state.editMapping = true;
+                        this.state.step = this.state.fileUploadStep;
+                    }, error => error ? this.toast.createErrorToast(error) : undefined);
                 } else {
                     this.toast.createErrorToast('You do not have permission to create mappings');
                 }
@@ -212,11 +228,23 @@ export class MappingSelectPageComponent implements OnInit {
             .subscribe(response => {
                 const hasPermission = response !== this.pep.deny;
                 if (hasPermission) {
-                    this.setStateIfCompatible(mappingRecord)
-                        .pipe(switchMap(() => this.state.setIriMap())).subscribe(() => {
+                    this.setStateIfCompatible(mappingRecord).pipe(
+                        switchMap((nextStep: string) => {
+                            return this.state.setIriMap().pipe(
+                                map(() => {
+                                    return nextStep;
+                                })
+                            );
+                        })
+                    ).subscribe((step:string) => {
+                        if (step === 'default') {
                             this.state.startCreateMapping();
                             this.dialog.open(CreateMappingOverlayComponent);
-                        }, error => error ? this.toast.createErrorToast(error) : undefined);
+                        } else if (step === 'edit') {
+                            this.state.editMapping = true;
+                            this.state.step = this.state.fileUploadStep;
+                        }
+                    }, error => error ? this.toast.createErrorToast(error) : undefined);
                 } else {
                     this.toast.createErrorToast('You do not have permission to create mappings');
                 }
@@ -231,23 +259,41 @@ export class MappingSelectPageComponent implements OnInit {
                 this.setResults();
             }, error => this.toast.createErrorToast(error));
     }
-    setStateIfCompatible(mappingRecord: MappingRecord): Observable<null> {
+    setStateIfCompatible(mappingRecord: MappingRecord): Observable<string> {
+        let mapState = undefined;
         return this.state.getMappingState(mappingRecord).pipe(
             switchMap((mappingState: MappingState) => {
-                return this.state.findIncompatibleMappings(mappingState.mapping).pipe(
-                    switchMap(incomMappings => {
-                        if (incomMappings.length) {
-                            this.toast.createErrorToast('The source ontology for the mapping and/or its imported '
-                              + 'ontologies have been changed and are no longer compatible. Unable to open the mapping', 
-                              {timeOut: 8000});
-                            return throwError(null);
-                        } else {
-                            this.state.selected = mappingState;
-                            return of(null);
+                mapState = mappingState;
+                return this.state.findIncompatibleMappings(mappingState.mapping);
+            }),
+            switchMap(incomMappings => {
+                this.state.selected = mapState;
+                if (incomMappings.length) {
+                    return this.dialog.open(IncompatibleWarningModalComponent, {
+                        data: {
+                            mappingRecord,
+                            incomMappings
                         }
-                    })
-                );
+                    }).afterClosed();
+                } else {
+                    return of('default');
+                }
             })
         );
+    }
+    private _checkCreatePermission(): void {
+        const request = {
+            resourceId: `http://mobi.com/catalog-local`,
+            actionId: `${POLICY}Create`,
+            actionAttrs: {
+                [RDF + 'type']: `${DELIM}MappingRecord`
+            }
+        } as XACMLRequest;
+        this.pep.evaluateRequest(request)
+            .subscribe(response => {
+                this.canCreate = response === this.pep.permit;
+            }, () => {
+                this.toast.createErrorToast('Could not retrieve mapping creation permissions');
+            });
     }
 }

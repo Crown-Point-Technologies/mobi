@@ -32,6 +32,7 @@ import { RouterModule } from '@angular/router';
 
 import { ErrorStateMatcher } from '@angular/material/core';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
@@ -52,6 +53,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSliderModule } from '@angular/material/slider';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatTableModule } from '@angular/material/table';
@@ -66,6 +68,7 @@ import { SHACLFormsModule } from '../shacl-forms/shacl-forms.module';
 
 import { ActivityListComponent } from './components/activity-list/activity-list.component';
 import { ActivityTitleComponent } from './components/activityTitle/activityTitle.component';
+import { AdvancedLanguageSelectComponent } from './components/advancedLanguageSelect/advancedLanguageSelect.component';
 import { BlankNodeValueDisplayComponent } from './components/blankNodeValueDisplay/blankNodeValueDisplay.component';
 import { BranchSelectComponent } from './components/branchSelect/branchSelect.component';
 import { BreadcrumbsComponent } from './components/breadcrumbs/breadcrumbs.component';
@@ -93,6 +96,7 @@ import { RecordIconComponent } from './components/recordIcon/recordIcon.componen
 import { ResolveConflictsBlock } from './components/resolveConflictsBlock/resolveConflictsBlock.component';
 import { ResolveConflictsFormComponent } from './components/resolveConflictsForm/resolveConflictsForm.component';
 import { SearchBarComponent } from './components/searchBar/searchBar.component';
+import { SerializationSelectComponent } from './components/serializationSelect/serializationSelect.component';
 import { SettingEditPageComponent } from './components/settingEditPage/settingEditPage.component';
 import { SettingGroupComponent } from './components/settingGroup/settingGroup.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
@@ -151,7 +155,6 @@ import { MobiErrorStateMatcher } from './MobiErrorStateMatcher';
 import { HistoryGraph } from '../history-graph/history-graph.module';
 import {SharedDataManagerService} from "./services/shared-data-manager.service";
 
-
 /**
  * @namespace shared
  *
@@ -170,6 +173,7 @@ import {SharedDataManagerService} from "./services/shared-data-manager.service";
         HttpClientModule,
         MatMarkdownEditorModule,
         MatAutocompleteModule,
+        MatBadgeModule,
         MatButtonModule,
         MatButtonToggleModule,
         MatCardModule,
@@ -190,6 +194,7 @@ import {SharedDataManagerService} from "./services/shared-data-manager.service";
         MatRadioModule,
         MatSelectModule,
         MatSlideToggleModule,
+        MatSliderModule,
         MatSnackBarModule,
         MatStepperModule,
         MatTableModule,
@@ -203,6 +208,7 @@ import {SharedDataManagerService} from "./services/shared-data-manager.service";
     declarations: [
         ActivityListComponent,
         ActivityTitleComponent,
+        AdvancedLanguageSelectComponent,
         BeautifyPipe,
         BlankNodeValueDisplayComponent,
         BranchSelectComponent,
@@ -240,6 +246,7 @@ import {SharedDataManagerService} from "./services/shared-data-manager.service";
         ResolveConflictsBlock,
         ResolveConflictsFormComponent,
         SearchBarComponent,
+        SerializationSelectComponent,
         SettingEditPageComponent,
         SettingGroupComponent,
         ShowPropertiesPipe,
@@ -271,6 +278,7 @@ import {SharedDataManagerService} from "./services/shared-data-manager.service";
         HttpClientModule,
         MatMarkdownEditorModule,
         MatAutocompleteModule,
+        MatBadgeModule,
         MatButtonModule,
         MatButtonToggleModule,
         MatCardModule,
@@ -291,6 +299,7 @@ import {SharedDataManagerService} from "./services/shared-data-manager.service";
         MatRadioModule,
         MatSelectModule,
         MatSlideToggleModule,
+        MatSliderModule,
         MatSnackBarModule,
         MatStepperModule,
         MatTableModule,
@@ -301,6 +310,7 @@ import {SharedDataManagerService} from "./services/shared-data-manager.service";
         SHACLFormsModule,
         ActivityListComponent,
         ActivityTitleComponent,
+        AdvancedLanguageSelectComponent,
         BlankNodeValueDisplayComponent,
         BranchSelectComponent,
         BreadcrumbsComponent,
@@ -325,6 +335,7 @@ import {SharedDataManagerService} from "./services/shared-data-manager.service";
         ResolveConflictsBlock,
         ResolveConflictsFormComponent,
         SearchBarComponent,
+        SerializationSelectComponent,
         SettingEditPageComponent,
         SidebarComponent,
         SpinnerComponent,

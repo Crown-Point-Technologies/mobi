@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -24,10 +24,10 @@ import { Component, OnInit } from '@angular/core';
 import { get, map, filter, some, chain, find, sortBy, isNull, isUndefined} from 'lodash';
 import { forkJoin } from 'rxjs';
 
-import { FOAF, USER } from '../../../prefixes';
+import { FOAF, ROLES, USER } from '../../../prefixes';
 import { Group } from '../../../shared/models/group.interface';
 import { Policy } from '../../../shared/models/policy.interface';
-import { User } from '../../../shared/models/user.interface';
+import { User } from '../../../shared/models/user.class';
 import { CatalogManagerService } from '../../../shared/services/catalogManager.service';
 import { PolicyManagerService } from '../../../shared/services/policyManager.service';
 import { UserManagerService } from '../../../shared/services/userManager.service';
@@ -50,7 +50,7 @@ export class PermissionsPageComponent implements OnInit {
     catalogId = '';
     systemRepoId = 'http://mobi.com/system-repo';
     groupAttributeId = `http://mobi.com/policy/prop-path(${encodeURIComponent('^<' + FOAF + 'member>')})`;
-    userRole = 'http://mobi.com/roles/user';
+    userRole = `${ROLES}user`;
     policies: Policy[] = [];
 
     constructor(private pm: PolicyManagerService, private cm: CatalogManagerService, private toast: ToastService,
@@ -105,7 +105,7 @@ export class PermissionsPageComponent implements OnInit {
         } else {
             item.selectedUsers = this.sortUsers(chain(matches)
                 .filter({ id: this.pm.subjectId })
-                .map(obj => find(this.um.users, { iri: obj.value }))
+                .map(obj => this.um.users.find(user => user.iri === obj.value ))
                 .reject(isNull)
                 .reject(isUndefined)
                 .value());

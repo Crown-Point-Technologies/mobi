@@ -4,7 +4,7 @@
   $Id:$
   $HeadURL:$
   %%
-  Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
   %%
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -48,14 +48,14 @@
                                 {{request.title}}
                             </span>
                         </h3>
-                        <p class="request-info"><small>Created on {{request.date}} by {{request.creator}}</small></p>
+                        <p class="request-info"><small>Created on {{request.date}} by <span title="Username: {{request.creator.username}}">{{request.creator.displayName}}</span></small></p>
                         <dl>
                             <dt class="text-muted">Record</dt>
                             <dd class="text-truncate" [title]="request.recordTitle">{{request.recordTitle}}</dd>
                             <dt class="text-muted">Assignee(s)</dt>
                             <dd><ul class="assignees">
                                 <li *ngIf="request.assignees.length === 0" class="last">(None specified)</li>
-                                <li *ngFor="let assignee of request.assignees; last as lastAssignee" [ngClass]="{'last': lastAssignee}">{{assignee}}</li>
+                                <li *ngFor="let assignee of request.assignees; last as lastAssignee" [ngClass]="{'last': lastAssignee}" title="Username: {{assignee.username}}">{{assignee.displayName}}</li>
                             </ul></dd>
                         </dl>
                     </div>

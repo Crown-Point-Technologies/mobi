@@ -5,7 +5,7 @@
   $Id:$
   $HeadURL:$
   %%
-  Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
   %%
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -26,15 +26,12 @@
     <parent>
         <artifactId>mobi-itests</artifactId>
         <groupId>com.mobi</groupId>
-        <version>2.5.0-SNAPSHOT</version>
+        <version>3.1.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>itests-web</artifactId>
     <name>itests-web</name>
-    <properties>
-        <https-port>10000</https-port>
-    </properties>
 
     <dependencies>
         <!-- Karaf Dependencies -->
@@ -52,6 +49,35 @@
             </exclusions>
         </dependency>
     </dependencies>
+
+    <properties>
+        <distributionName>mobi</distributionName>
+        <distribution>mobi-distribution</distribution>
+        <source-files>Dockerfile, import.sh, dataFiles, mobi-distribution.tar.gz</source-files>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.7.1</version>
+                <executions>
+                    <execution>
+                        <id>make-sources-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <descriptors>
+                        <descriptor>src/assembly/src.xml</descriptor>
+                    </descriptors>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
     <profiles>
         <profile>
@@ -92,38 +118,13 @@
                                     <version>${project.version}</version>
                                     <type>tar.gz</type>
                                     <overWrite>false</overWrite>
+                                    <destFileName>mobi-distribution.tar.gz</destFileName>
                                 </artifactItem>
                             </artifactItems>
-                            <outputDirectory>${project.basedir}/target/distribution</outputDirectory>
+                            <outputDirectory>${project.basedir}/target/classes</outputDirectory>
                             <overWriteReleases>true</overWriteReleases>
                             <overWriteSnapshots>true</overWriteSnapshots>
                         </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-resources-plugin</artifactId>
-                        <version>3.1.0</version>
-                        <executions>
-                            <execution>
-                                <id>copy-resource-one</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>copy-resources</goal>
-                                </goals>
-                                <configuration>
-                                    <outputDirectory>${project.basedir}/target/distribution</outputDirectory>
-                                    <resources>
-                                        <resource>
-                                            <directory>${project.basedir}/src/test/resources/filtered-resources</directory>
-                                            <includes>
-                                                <include>z-catalog-ontology-9p-records.trig</include>
-                                                <include>import.sh</include>
-                                            </includes>
-                                        </resource>
-                                    </resources>
-                                </configuration>
-                            </execution>
-                        </executions>
                     </plugin>
                     <plugin>
                         <groupId>com.cj.jshintmojo</groupId>
@@ -145,59 +146,6 @@
                             <reporter>jslint</reporter>
                             <reportFile>target/jshint.xml</reportFile>
                             <failOnError>true</failOnError>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>io.fabric8</groupId>
-                        <artifactId>docker-maven-plugin</artifactId>
-                        <version>0.40.1</version>
-                        <extensions>true</extensions>
-                        <executions>
-                            <execution>
-                                <id>start</id>
-                                <phase>pre-integration-test</phase>
-                                <goals>
-                                    <goal>build</goal>
-                                    <goal>start</goal>
-                                </goals>
-                            </execution>
-                            <execution>
-                                <id>stop</id>
-                                <phase>post-integration-test</phase>
-                                <goals>
-                                    <goal>stop</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <images>
-                                <image>
-                                    <name>docker.io/mobi/test</name>
-                                    <build>
-                                        <contextDir>${project.basedir}/target/distribution</contextDir>
-                                        <dockerFile>${project.basedir}/target/classes/Dockerfile</dockerFile>
-                                    </build>
-                                    <run>
-                                        <ports>
-                                            <port>${https-port}:8443</port>
-                                        </ports>
-                                        <wait>
-                                            <http>
-                                                <allowAllHosts>true</allowAllHosts>
-                                                <status>200</status>
-                                                <!-- Check for this URL to return a 200 return code .... -->
-                                                <url>https://localhost:${https-port}/mobi/index.html#/home</url>
-                                                <method>GET</method>
-                                            </http>
-                                            <time>300000</time>
-                                            <exec>
-                                                <postStart>sh /opt/mobi/import.sh</postStart>
-<!--                                                <breakOnError>true</breakOnError>-->
-                                            </exec>
-                                        </wait>
-                                    </run>
-                                </image>
-                            </images>
                         </configuration>
                     </plugin>
                     <plugin>
@@ -256,7 +204,7 @@
                 </plugins>
                 <resources>
                     <resource>
-                        <directory>${project.basedir}/src/test/resources/filtered-resources</directory>
+                        <directory>${project.basedir}/src/test/resources/build-resources</directory>
                         <filtering>true</filtering>
                     </resource>
                 </resources>

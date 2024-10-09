@@ -6,7 +6,7 @@ package com.mobi.catalog.api.mergerequest;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -30,6 +30,7 @@ import com.mobi.catalog.api.builder.UserCount;
 import com.mobi.catalog.api.ontologies.mcat.Branch;
 import com.mobi.catalog.api.ontologies.mcat.Catalog;
 import com.mobi.catalog.api.ontologies.mcat.VersionedRDFRecord;
+import com.mobi.catalog.api.ontologies.mergerequests.ClosedMergeRequest;
 import com.mobi.catalog.api.ontologies.mergerequests.Comment;
 import com.mobi.catalog.api.ontologies.mergerequests.MergeRequest;
 import com.mobi.jaas.api.ontologies.usermanagement.User;
@@ -75,6 +76,54 @@ public interface MergeRequestManager {
     void acceptMergeRequest(Resource requestId, User user, RepositoryConnection conn);
 
     /**
+     * Closes a {@link MergeRequest} and changes the type to an {@link ClosedMergeRequest},
+     * setting the targetCommit and sourceCommit properties to the current head Commits of the
+     * targetBranch and sourceBranch.
+     *
+     * @param requestId The {@link Resource} representing the {@link MergeRequest} ID to close.
+     * @param user The {@link User} performing the closing
+     * @param conn A RepositoryConnection to use for lookup
+     * @throws IllegalStateException If any expected links between objects or data properties are not present on the
+     *      {@link MergeRequest}, {@link VersionedRDFRecord}, {@link Branch Branches}, or
+     *      {@link com.mobi.catalog.api.ontologies.mcat.Commit Commits}
+     * @throws IllegalArgumentException If the {@link MergeRequest} has already been accepted.
+     */
+    void closeMergeRequest(Resource requestId, User user, RepositoryConnection conn);
+
+    /**
+     * Closes a {@link MergeRequest} and changes the type to an {@link ClosedMergeRequest},
+     * setting the targetCommit and sourceCommit properties to the current head Commits of the
+     * targetBranch and sourceBranch.
+     *
+     * @param requestId The {@link Resource} representing the {@link MergeRequest} ID to close.
+     * @param user The {@link User} performing the closing
+     * @throws IllegalStateException If any expected links between objects or data properties are not present on the
+     *      {@link MergeRequest}, {@link VersionedRDFRecord}, {@link Branch Branches}, or
+     *      {@link com.mobi.catalog.api.ontologies.mcat.Commit Commits}
+     * @throws IllegalArgumentException If the {@link MergeRequest} has already been accepted.
+     */
+    void closeMergeRequest(Resource requestId, User user);
+
+    /**
+     * Reopens a {@link ClosedMergeRequest} and changes the type to an {@link MergeRequest},
+     * removing the targetCommit and sourceCommit properties.
+     *
+     * @param requestId The {@link Resource} representing the {@link ClosedMergeRequest} ID to reopen.
+     * @param user the {@link User} requesting to reopen the merge request
+     * @param conn the connection to the repository
+     */
+    void reopenMergeRequest(Resource requestId, User user, RepositoryConnection conn);
+
+    /**
+     * Reopens a {@link ClosedMergeRequest} identified by the given requestId for the specified user,
+     * removing the targetCommit and sourceCommit properties.
+     *
+     * @param requestId The {@link Resource} of the {@link ClosedMergeRequest} to be reopened
+     * @param user The {@link User} who is reopening the merge request
+     */
+    void reopenMergeRequest(Resource requestId, User user);
+
+    /**
      * Stores the provided {@link MergeRequest} in the repository as long as it does not already exist.
      *
      * @param request A {@link MergeRequest} to add to the repository
@@ -99,7 +148,7 @@ public interface MergeRequestManager {
      * @param recordId A Resource of the recordId representing a VersionedRDFRecord
      * @param branchId A Resource of the branchId representing a deleted Branch
      */
-    void cleanMergeRequests(Resource recordId, Resource branchId);
+    void cleanMergeRequests(Resource recordId, Resource branchId, String branchTitle, List<Resource> deletedCommits);
 
     /**
      * Updates any existing MergeRequest that references the provided branchId that is being removed. If a deleted
@@ -109,8 +158,11 @@ public interface MergeRequestManager {
      * @param recordId A Resource of the recordId representing a VersionedRDFRecord
      * @param branchId A Resource of the branchId representing a deleted Branch
      * @param conn A RepositoryConnection to use for lookup
+     * @param branchTitle The title of the branch that was deleted
+     * @param deletedCommits A list of the IRIs of the commits that were deleted when the branch was deleted
      */
-    void cleanMergeRequests(Resource recordId, Resource branchId, RepositoryConnection conn);
+    void cleanMergeRequests(Resource recordId, Resource branchId, String branchTitle, List<Resource> deletedCommits,
+                            RepositoryConnection conn);
 
     /**
      * Create a {@link Comment} on an existing {@link MergeRequest}. This comment will be the first comment in a thread

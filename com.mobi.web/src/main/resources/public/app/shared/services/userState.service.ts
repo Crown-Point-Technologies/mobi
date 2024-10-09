@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -24,7 +24,7 @@
 import { Injectable } from '@angular/core';
 
 import { Group } from '../models/group.interface';
-import { User } from '../models/user.interface';
+import { User } from '../models/user.class';
 
 /**
  * @class shared.UserStateService

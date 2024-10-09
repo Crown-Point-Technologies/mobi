@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -27,7 +27,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ToastrModule } from 'ngx-toastr';
 
-import '@gitgraph/js';
+import '@sourceflow/gitgraph-js';
 import 'chroma-js';
 import 'lodash';
 import 'jquery';
@@ -58,9 +58,11 @@ import { MergeRequestsModule } from './merge-requests/merge-requests.module';
 import { MapperModule } from './mapper/mapper.module';
 import { DiscoverModule } from './discover/discover.module';
 import { OntologyEditorModule } from './ontology-editor/ontology-editor.module';
-import { AppRoutingModule } from './app-routing.module';
+import { VersionedRdfRecordEditorModule } from './versioned-rdf-record-editor/versioned-rdf-record-editor.module';
 import { LoginLayoutComponent } from './layouts/login-layout.component';
 import { MainLayoutComponent } from './layouts/main-layout.component';
+import { WorkflowsModule } from './workflows/workflows.module';
+import { AppRoutingModule } from './app-routing.module';
 
 @NgModule({
     imports: [
@@ -82,6 +84,8 @@ import { MainLayoutComponent } from './layouts/main-layout.component';
         SettingsModule,
         ShapesGraphEditorModule,
         UserManagementModule,
+        VersionedRdfRecordEditorModule,
+        WorkflowsModule
     ],
     declarations: [
         AppComponent,

@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -26,7 +26,7 @@ import { MockProvider } from 'ng-mocks';
 import {
     cleanStylesFromDOM
 } from '../../../test/ts/Shared';
-import { CATALOG, DATASET, DCTERMS, DELIM, ONTOLOGYEDITOR } from '../../prefixes';
+import { CATALOG, DATASET, DCTERMS, DELIM, ONTOLOGYEDITOR, SHAPESGRAPHEDITOR, WORKFLOWS } from '../../prefixes';
 import { CatalogManagerService } from './catalogManager.service';
 import { CatalogStateService } from './catalogState.service';
 
@@ -108,6 +108,12 @@ describe('Catalog State service', function() {
         });
         it('if the record is a DatasetRecord', function() {
             expect(service.getRecordIcon({'@id': '', '@type': [`${DATASET}DatasetRecord`]})).toEqual('fa-database');
+        });
+        it('if the record is a ShapesGraphRecord', function() {
+            expect(service.getRecordIcon({'@id': '', '@type': [`${SHAPESGRAPHEDITOR}ShapesGraphRecord`]})).toEqual('mat rule');
+        });
+        it('if the record is a WorkflowRecord', function() {
+            expect(service.getRecordIcon({'@id': '', '@type': [`${WORKFLOWS}WorkflowRecord`]})).toEqual('mat fact_check');
         });
         it('if the record is not a specified type', function() {
             expect(service.getRecordIcon({'@id': ''})).toEqual('fa-book');

@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -28,13 +28,14 @@ import { Observable } from 'rxjs';
 import {
     cleanStylesFromDOM,
 } from '../../../test/ts/Shared';
-import { MERGEREQ } from '../../prefixes';
+import { MERGEREQ, USER } from '../../prefixes';
 import { ProgressSpinnerService } from '../components/progress-spinner/services/progressSpinner.service';
 import { JSONLDObject } from '../models/JSONLDObject.interface';
 import { MergeRequestPaginatedConfig } from '../models/mergeRequestPaginatedConfig.interface';
-import { MergeRequestManagerService } from './mergeRequestManager.service';
 import { MergeRequest } from '../models/mergeRequest.interface';
 import { EventWithPayload } from '../models/eventWithPayload.interface';
+import { User } from '../models/user.class';
+import { MergeRequestManagerService } from './mergeRequestManager.service';
 
 describe('Merge Request Manager service', function() {
     let service: MergeRequestManagerService;
@@ -46,10 +47,18 @@ describe('Merge Request Manager service', function() {
     const commentId = 'commentId';
     const commentText = 'HELLO WORLD';
     const emptyObj: JSONLDObject = {'@id': '', '@type': []};
+    const creatorUserId = 'urn://test/user/creator-user-1';
+    const creatorUsername = 'creator';
+    const creator: User = new User({
+        '@id': creatorUserId,
+        '@type': [`${USER}User`],
+        [`${USER}username`]: [{ '@value': creatorUsername }],
+        [`${USER}hasUserRole`]: [],
+    });
     const mergeRequest01: MergeRequest = {
         title: 'title',
         date: '01/01/2020',
-        creator: 'string',
+        creator: creator,
         recordIri: 'RECORDIRI',
         assignees: [],
         jsonld: {
@@ -88,21 +97,21 @@ describe('Merge Request Manager service', function() {
 
     describe('should get a list of merge requests', function() {
         it('unless an error occurs', function() {
-            service.getRequests({ accepted: true })
+            service.getRequests({ requestStatus: 'accepted' })
                 .subscribe(() => fail('Observable should have rejected'), response => {
                     expect(response).toEqual(error);
                 });
             const request = httpMock.expectOne(req => req.url === service.prefix && req.method === 'GET');
-            expect(request.request.params.get('accepted').toString()).toEqual('true');
+            expect(request.request.params.get('requestStatus')).toEqual('accepted');
             request.flush('flush', { status: 400, statusText: error });
         });
         it('without parameters', function() {
-            service.getRequests({ accepted: true })
+            service.getRequests({ requestStatus: 'accepted' })
                 .subscribe(response => {
                     expect(response.body).toEqual([]);
                 }, () => fail('Observable should have resolved'));
             const request = httpMock.expectOne(req => req.url === service.prefix && req.method === 'GET');
-            expect(request.request.params.get('accepted').toString()).toEqual('true');
+            expect(request.request.params.get('requestStatus')).toEqual('accepted');
             expect(request.request.params.get('sort')).toBeNull();
             expect(request.request.params.get('ascending')).toBeNull();
             expect(request.request.params.get('searchText')).toBeNull();
@@ -113,7 +122,7 @@ describe('Merge Request Manager service', function() {
         });
         it('with parameters', function() {
             const config: MergeRequestPaginatedConfig = {
-                accepted: true,
+                requestStatus: 'accepted',
                 sortOption: {
                     label: '',
                     field: 'sort',
@@ -129,7 +138,7 @@ describe('Merge Request Manager service', function() {
                     expect(response.body).toEqual([]);
                 }, () => fail('Observable should have resolved'));
             const request = httpMock.expectOne(req => req.url === service.prefix && req.method === 'GET');
-            expect(request.request.params.get('accepted').toString()).toEqual('' + config.accepted);
+            expect(request.request.params.get('requestStatus')).toEqual(config.requestStatus);
             expect(request.request.params.get('sort').toString()).toEqual(config.sortOption.field);
             expect(request.request.params.get('ascending').toString()).toEqual('' + config.sortOption.asc);
             expect(request.request.params.get('searchText').toString()).toEqual(config.searchText);
@@ -147,7 +156,18 @@ describe('Merge Request Manager service', function() {
                 recordId: 'recordId',
                 sourceBranchId: 'branch1',
                 targetBranchId: 'branch2',
-                assignees: ['user1', 'user2'],
+                assignees: [
+                    new User({
+                        '@id': 'userA',
+                        '@type': [`${USER}User`],
+                        [`${USER}username`]: [{ '@value': 'userA' }]
+                    }),
+                    new User({
+                        '@id': 'userB',
+                        '@type': [`${USER}User`],
+                        [`${USER}username`]: [{ '@value': 'userB' }]
+                    })
+                ],
                 removeSource: true
             };
         });
@@ -173,7 +193,7 @@ describe('Merge Request Manager service', function() {
             expect((request.request.body as FormData).get('sourceBranchId').toString()).toEqual(this.requestConfig.sourceBranchId);
             expect((request.request.body as FormData).get('targetBranchId').toString()).toEqual(this.requestConfig.targetBranchId);
             expect((request.request.body as FormData).get('removeSource').toString()).toEqual('' + this.requestConfig.removeSource);
-            expect((request.request.body as FormData).getAll('assignees')).toEqual(this.requestConfig.assignees);
+            expect((request.request.body as FormData).getAll('assignees')).toEqual(this.requestConfig.assignees.map(user => user.username));
             request.flush(requestId);
         });
         it('without a description or assignees', function() {
@@ -239,10 +259,10 @@ describe('Merge Request Manager service', function() {
     });
     describe('should accept a merge request', function() {
         beforeEach(function() {
-            this.url = `${service.prefix}/${encodeURIComponent(requestId)}`;
+            this.url = `${service.prefix}/${encodeURIComponent(requestId)}/status?action=accept`;
         });
         it('unless an error occurs', function() {
-            service.acceptRequest(mergeRequest01)
+            service.updateRequestStatus(mergeRequest01, 'accept')
                 .subscribe(() => fail('Observable should have rejected'), response => {
                     expect(response).toEqual(error);
                 });
@@ -251,21 +271,21 @@ describe('Merge Request Manager service', function() {
         });
         it('successfully', function() {
             const event: EventWithPayload = {
-                'eventType':'EVENT_MERGE_REQUEST_ACCEPTED',
-                'payload':{
-                    'recordId':'RECORDIRI',
-                    'targetBranchId':'targetBranchId',
-                    'requestToAccept':{
-                        'title':'title',
-                        'date':'01/01/2020',
-                        'creator':'string',
-                        'recordIri':'RECORDIRI',
-                        'assignees':[],
-                        'jsonld':{
-                            '@id':'requestId'
+                'eventType': 'EVENT_MERGE_REQUEST_ACCEPTED',
+                'payload': {
+                    'recordId': 'RECORDIRI',
+                    'targetBranchId': 'targetBranchId',
+                    'requestToAccept': {
+                        'title': 'title',
+                        'date': '01/01/2020',
+                        'creator': creator,
+                        'recordIri': 'RECORDIRI',
+                        'assignees': [],
+                        'jsonld': {
+                            '@id': 'requestId'
                         },
-                        'targetBranch':{
-                            '@id':'targetBranchId'
+                        'targetBranch': {
+                            '@id': 'targetBranchId'
                         }
                     }
                 }
@@ -273,7 +293,7 @@ describe('Merge Request Manager service', function() {
             const sub = service.mergeRequestAction$.subscribe((e: EventWithPayload) => {
                 expect(e).toEqual(event);
             }, (e) => fail(`Observable should have resolved: ${e}`));
-            service.acceptRequest(mergeRequest01)
+            service.updateRequestStatus(mergeRequest01, 'accept')
               .subscribe(() => {
                 expect(true).toBeTrue();
             }, (e) => fail(`Observable should have resolved: ${e}`));
@@ -405,12 +425,12 @@ describe('Merge Request Manager service', function() {
         });
     });
     it('should determine whether a request is accepted', function() {
-        expect(service.isAccepted(emptyObj)).toEqual(false);
+        expect(service.requestStatus(emptyObj)).toEqual('open');
         const mr = Object.assign({}, emptyObj);
         mr['@type'] = [`${MERGEREQ}MergeRequest`];
-        expect(service.isAccepted(emptyObj)).toEqual(false);
+        expect(service.requestStatus(emptyObj)).toEqual('open');
         mr['@type'].push(`${MERGEREQ}AcceptedMergeRequest`);
-        expect(service.isAccepted(mr)).toEqual(true);
+        expect(service.requestStatus(mr)).toEqual('accepted');
     });
     describe('should retrieve the creators of merge requests', function() {
       beforeEach(function() {
@@ -635,4 +655,3 @@ describe('Merge Request Manager service', function() {
 function spy(service: MergeRequestManagerService, arg1: string) {
     throw new Error('Function not implemented.');
 }
-

@@ -4,7 +4,7 @@
   $Id:$
   $HeadURL:$
   %%
-  Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
   %%
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -23,18 +23,22 @@
 <div class="merge-request-view d-flex flex-column h-100">
     <div class="flex-1 vertical-scroll">
         <div class="main-details">
-            <mat-chip-list class="float-right" selectable="false">
-                <mat-chip ngClass="{{isAccepted ? 'mat-primary' : 'mat-success'}}" selected>{{isAccepted ? 'Accepted' : 'Open'}}</mat-chip>
-            </mat-chip-list>
-            <div class="title mb-2">
-                <h2 class="text-truncate d-inline-block request-info">
-                    <record-icon [recordType]="state.selected.recordType"></record-icon>
-                    <span class="request-info-title">{{state.selected.title}}</span>
-                </h2>
-                <div><small class="ml-1">Created on {{state.selected.date}} by {{state.selected.creator}}</small></div>
+            <div class="title-container d-flex flex-column mb-2">
+                <div class="request-info d-flex flex-row">
+                    <h2 class="text-truncate d-inline-block align-bottom mb-0">
+                        <record-icon [recordType]="state.selected.recordType"></record-icon>
+                        <span class="request-info-title align-self-center">{{state.selected.title}}</span>
+                    </h2>
+                    <div class="ml-auto mt-1">
+                        <mat-chip-list selectable="false">
+                            <mat-chip [ngClass]="statusChipClass" selected>{{ requestStatus | titlecase }}</mat-chip>
+                        </mat-chip-list>
+                    </div>
+                </div>
+                <div><small class="ml-1">Created on {{state.selected.date}} by <span title="Username: {{state.selected.creator.username}}">{{state.selected.creator.displayName}}</span></small></div>
             </div>
-            <div class="details d-flex">
-                <div class="details flex-1 remove-min-width">
+            <div [ngClass]="{'details-read-only ': buttonsDisabled, 'details-hover': !buttonsDisabled, 'd-flex': true}">
+                <div [ngClass]="{'details-read-only ': buttonsDisabled, 'details-hover': !buttonsDisabled, 'flex-1': true, 'remove-min-width': true}">
                     <div class="description">{{state.selected.description}}</div>
                     <dl>
                         <dt class="text-muted">Branch</dt>
@@ -48,17 +52,17 @@
                         <span class="field-label">Assignee(s)</span>
                         <ul class="assignees">
                             <li *ngIf="currentAssignees.length === 0" class="last">(None specified)</li>
-                            <li *ngFor="let assignee of currentAssignees; last as last" [ngClass]="{'last': last}">{{assignee}}</li>
+                            <li *ngFor="let assignee of currentAssignees; last as last" [ngClass]="{'last': last}" title="Username: {{assignee.username}}">{{assignee.displayName}}</li>
                         </ul>
                     </div>
-                    <mat-checkbox *ngIf="state.selected.sourceTitle !== 'MASTER' && !isAccepted" [(ngModel)]="state.selected.removeSource" [disabled]="true">{{'Remove ' + state.selected.sourceTitle + ' after merge.'}}</mat-checkbox>
+                    <mat-checkbox *ngIf="state.selected.sourceTitle !== 'MASTER' && requestStatus !== 'accepted'" [(ngModel)]="state.selected.removeSource" [disabled]="true">{{'Remove ' + state.selected.sourceTitle + ' after merge.'}}</mat-checkbox>
                 </div>
-                <div *ngIf="!isAccepted" class="edit-button-container text-center">
-                    <button mat-icon-button color="primary" (click)="editRequest()"><i class="fa fa-pencil fa-fw"></i></button>
+                <div *ngIf="requestStatus === 'open'" class="edit-button-container text-center">
+                    <button mat-icon-button color="primary" (click)="editRequest()" [title]="editButtonTitle" [disabled]="buttonsDisabled"><i class="fa fa-pencil fa-fw"></i></button>
                 </div>
             </div>
         </div>
-        <div class="view" *ngIf="!resolveConflicts">
+        <div class="resolve-conflicts-view" *ngIf="!resolveConflicts">
             <div class="alert alert-warning d-flex align-items-center mt-1" role="alert" *ngIf="state.selected.conflicts?.length">
                 <div class="flex-grow-1">
                     <span class="fa fa-exclamation-triangle"></span>
@@ -81,11 +85,23 @@
         <div class="view-buttons" *ngIf="!resolveConflicts">
             <button mat-raised-button (click)="back()">Back</button>
             <button mat-raised-button class="float-right button-accept" color="primary"
-                    *ngIf="!isAccepted"
-                    [disabled]="state.selected.conflicts?.length > 0|| !state.selected.targetTitle||  isSubmitDisabled"
-                    [title]="buttonTitle"
+                    *ngIf="requestStatus === 'open'"
+                    [disabled]="state.selected.conflicts?.length > 0 || !state.selected.targetTitle || buttonsDisabled || isSubmitDisabled"
+                    [title]="acceptButtonTitle"
                     (click)="showAccept()">Accept</button>
-            <button mat-raised-button class="float-right" color="warn" (click)="showDelete()">Delete</button>
+            <button mat-raised-button class="float-right button-close"
+                    *ngIf="requestStatus === 'open'"
+                    [title]="(!state.selected.jsonld[targetIRI] || !state.selected.jsonld[sourceIRI]) ? closeMissingBranchMsg : closeButtonTitle"
+                    [disabled]="buttonsDisabled || !state.selected.jsonld[targetIRI] || !state.selected.jsonld[sourceIRI]"
+                    (click)="showClose()">Close</button>
+            <button mat-raised-button class="float-right button-delete" color="warn"
+                    [title]="deleteButtonTitle"
+                    [disabled]="buttonsDisabled" (click)="showDelete()">Delete</button>
+            <button mat-raised-button class="float-right button-reopen" color="primary"
+                    *ngIf="requestStatus === 'closed'"
+                    [disabled]="buttonsDisabled || !state.selected.jsonld[targetIRI] || !state.selected.jsonld[sourceIRI]"
+                    [title]="(!state.selected.jsonld[targetIRI] || !state.selected.jsonld[sourceIRI]) ? reopenMissingBranchMsg : reopenButtonTitle"
+                    (click)="showReopen()">Reopen</button>
         </div>
         <div class="conflicts-buttons" *ngIf="resolveConflicts">
             <button mat-raised-button (click)="cancelResolve()">Cancel</button>

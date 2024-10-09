@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,8 +21,10 @@
  * #L%
  */
 import { HttpResponse } from '@angular/common/http';
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { forEach, map, filter, includes} from 'lodash';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 import { CATALOG, DCTERMS } from '../../../prefixes';
 import { KeywordCount } from '../../../shared/models/keywordCount.interface';
@@ -59,9 +61,10 @@ import { getBeautifulIRI } from '../../../shared/utility';
     templateUrl: './recordFilters.component.html',
     styleUrls: ['./recordFilters.component.scss']
 })
-export class RecordFiltersComponent implements OnInit {
+export class RecordFiltersComponent implements OnInit, OnDestroy {
     filters: RecordFilter[] = [];
-
+    private _destroySub$ = new Subject<void>();
+    
     @Input() catalogId: string;
     @Input() recordType: string;
     @Input() keywordFilterList: string[];
@@ -142,13 +145,19 @@ export class RecordFiltersComponent implements OnInit {
                 this.pagingData['hasNextPage'] = filtered.length > this.filterItems.length;
             },
             getItemText: function(filterItem: FilterItem) {
-                const userDisplay = componentContext._um.getUserDisplay(filterItem.value['user']);
+                const userDisplay = filterItem.value['user'].displayName;
                 const count = filterItem.value['count'];
                 return `${userDisplay} (${count})`;
             },
+            getItemTooltip: function(filterItem: FilterItem) {
+                const userDisplay = filterItem.value['user'].username;
+                return `Username: ${userDisplay}`;
+            },
             setFilterItems: function() {
                 const filterInstance = this;
-                componentContext.cm.getRecords(componentContext.catalogId, {}).subscribe(response => {
+                componentContext.cm.getRecords(componentContext.catalogId, {}).pipe(
+                    takeUntil(componentContext._destroySub$),
+                ).subscribe(response => {
                     const userMap: {[key: string]: string[]} = {};
                     response.body.forEach(record => {
                         if (!userMap[record[`${DCTERMS}publisher`][0]['@id']]) {
@@ -207,8 +216,9 @@ export class RecordFiltersComponent implements OnInit {
                     pageIndex: pagingData.currentPage - 1,
                     limit: pagingData.limit,
                 };
-                componentContext.cm.getKeywords(componentContext.catalogId, paginatedConfig)
-                    .subscribe((response: HttpResponse<KeywordCount[]>) => {
+                componentContext.cm.getKeywords(componentContext.catalogId, paginatedConfig).pipe(
+                    takeUntil(componentContext._destroySub$),
+                ).subscribe((response: HttpResponse<KeywordCount[]>) => {
                         if (pagingData.currentPage === 1) {
                             filterInstance.rawFilterItems = response.body;
                         } else {
@@ -247,5 +257,9 @@ export class RecordFiltersComponent implements OnInit {
                 filter.onInit();
             }
         });
+    }
+    ngOnDestroy(): void {
+        this._destroySub$.next();
+        this._destroySub$.complete();
     }
 }

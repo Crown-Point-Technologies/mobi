@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -58,7 +58,7 @@ export class OntologyPropertiesBlockComponent implements OnChanges {
     }
     updatePropertiesFiltered(): void {
         this.properties = union(this.pm.ontologyProperties, this.pm.defaultAnnotations, this.pm.owlAnnotations, Object.keys(this.os.listItem.annotations.iris));
-        this.propertiesFiltered = sortBy(this.properties.filter(prop => has(this.ontology, prop)), iri => this.os.getEntityNameByListItem(iri));
+        this.propertiesFiltered = sortBy(this.properties.filter(prop => has(this.ontology, prop)), iri => this.os.getEntityName(iri));
     }
     openAddOverlay(): void {
         this.dialog.open(OntologyPropertyOverlayComponent, {data: { editing: false }}).afterClosed()

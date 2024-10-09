@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -29,7 +29,6 @@ import { map, switchMap } from 'rxjs/operators';
 import { of, Observable } from 'rxjs';
 
 import { CommitDifference } from '../../models/commitDifference.interface';
-import { UserManagerService } from '../../services/userManager.service';
 import { CatalogManagerService } from '../../services/catalogManager.service';
 import { JSONLDObject } from '../../models/JSONLDObject.interface';
 import { OntologyManagerService } from '../../services/ontologyManager.service';
@@ -38,6 +37,7 @@ import { EntityNames } from '../../models/entityNames.interface';
 import { Commit } from '../../models/commit.interface';
 import { ONTOLOGYEDITOR } from '../../../prefixes';
 import { getBeautifulIRI, getDate, getObjIrisFromDifference } from '../../utility';
+import { User } from '../../models/user.class';
 
 /**
  * @class shared.CommitInfoOverlayComponent
@@ -48,7 +48,7 @@ import { getBeautifulIRI, getDate, getObjIrisFromDifference } from '../../utilit
  * following data to be provided.
  *
  * @param {Commit} MAT_DIALOG_DATA.commit The commit to display information about including the commit IRI
- * @param {string} MAT_DIALOG_DATA.ontRecordId An optional IRI string representing an OntologyRecord to query for names
+ * @param {string} MAT_DIALOG_DATA.recordId An optional IRI string representing an OntologyRecord to query for names
  * if present
  */
 @Component({
@@ -60,18 +60,20 @@ export class CommitInfoOverlayComponent implements OnInit {
     additions: JSONLDObject[] = [];
     deletions: JSONLDObject[] = [];
     hasMoreResults = false;
-    entityNames = {};
+    entityNames: EntityNames = {};
     tempAdditions: JSONLDObject[] = [];
     tempDeletions: JSONLDObject[] = [];
     date = '';
+    userDisplay: string;
 
     constructor(private dialogRef: MatDialogRef<CommitInfoOverlayComponent>, 
-                @Inject(MAT_DIALOG_DATA) public data: {ontRecordId: string, commit: Commit, type: string},
-                private toast: ToastService, public um: UserManagerService, private cm: CatalogManagerService,
+                @Inject(MAT_DIALOG_DATA) public data: {recordId: string, commit: Commit, type: string},
+                private toast: ToastService, private cm: CatalogManagerService,
                 private om: OntologyManagerService) {
     }
 
     ngOnInit(): void {
+        this.userDisplay = User.getDisplayName(this.data.commit.creator);
         this.date = getDate(this.data.commit.date, 'short');
         this.retrieveMoreResults(100, 0);
     }
@@ -87,10 +89,10 @@ export class CommitInfoOverlayComponent implements OnInit {
                     const headers = response.headers;
                     this.hasMoreResults = (headers.get('has-more-results') || 'false') === 'true';
 
-                    if (this.data.ontRecordId && (this.data.type === ONTOLOGYEDITOR + 'OntologyRecord')) {
+                    if (this.data.type === `${ONTOLOGYEDITOR}OntologyRecord`) {
                         const diffIris = union(this.tempAdditions.map(obj => obj['@id']), this.tempDeletions.map(obj => obj['@id']));
                         const filterIris = union(diffIris, getObjIrisFromDifference(this.tempAdditions), getObjIrisFromDifference(this.tempDeletions));
-                        return this.om.getOntologyEntityNames(this.data.ontRecordId, '', this.data.commit.id, false, false, filterIris);
+                        return this.om.getOntologyEntityNames(this.data.recordId, '', this.data.commit.id, false, false, filterIris);
                     }
                     return of(null);
                 }),

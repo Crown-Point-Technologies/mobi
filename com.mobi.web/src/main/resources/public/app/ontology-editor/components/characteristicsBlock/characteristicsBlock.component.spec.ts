@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -128,7 +128,7 @@ describe('Characteristics Block component', function() {
                 expect(component.types).toContain(`${OWL}FunctionalProperty`);
                 expect(component.typesChange.emit).toHaveBeenCalledWith(component.types);
                 expect(ontologyStateStub.addToAdditions).toHaveBeenCalledWith(ontologyStateStub.listItem.versionedRdfRecord.recordId, this.statement);
-                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem, false);
+                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem);
             });
             it('is checked and the statement is in deletions', function() {
                 ontologyStateStub.listItem.deletions = [Object.assign({}, this.statement)];
@@ -138,7 +138,7 @@ describe('Characteristics Block component', function() {
                 expect(component.typesChange.emit).toHaveBeenCalledWith(component.types);
                 expect(ontologyStateStub.addToAdditions).not.toHaveBeenCalled();
                 expect(ontologyStateStub.listItem.deletions.length).toEqual(0);
-                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem, false);
+                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem);
             });
             it('is checked and the statement with another property is in deletions', function() {
                 const object = Object.assign({}, this.statement);
@@ -150,7 +150,7 @@ describe('Characteristics Block component', function() {
                 expect(component.typesChange.emit).toHaveBeenCalledWith(component.types);
                 expect(ontologyStateStub.addToAdditions).not.toHaveBeenCalled();
                 expect(some(ontologyStateStub.listItem.deletions, {'@id': this.id, other: 'value'})).toEqual(true);
-                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem, false);
+                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem);
             });
             it('is not checked and no match in additions', function() {
                 ontologyStateStub.listItem.selected = Object.assign({}, this.statement);
@@ -159,7 +159,7 @@ describe('Characteristics Block component', function() {
                 expect(component.types).not.toContain(`${OWL}FunctionalProperty`);
                 expect(component.typesChange.emit).toHaveBeenCalledWith(component.types);
                 expect(ontologyStateStub.addToDeletions).toHaveBeenCalledWith(ontologyStateStub.listItem.versionedRdfRecord.recordId, this.statement);
-                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem, false);
+                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem);
             });
             it('is not checked and the statement is in additions', function() {
                 ontologyStateStub.listItem.additions = [Object.assign({}, this.statement)];
@@ -170,7 +170,7 @@ describe('Characteristics Block component', function() {
                 expect(component.typesChange.emit).toHaveBeenCalledWith(component.types);
                 expect(ontologyStateStub.addToDeletions).not.toHaveBeenCalled();
                 expect(ontologyStateStub.listItem.additions.length).toEqual(0);
-                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem, false);
+                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem);
             });
             it('is not checked and the statement is in additions', function() {
                 const object = Object.assign({}, this.statement);
@@ -183,7 +183,7 @@ describe('Characteristics Block component', function() {
                 expect(component.typesChange.emit).toHaveBeenCalledWith(component.types);
                 expect(ontologyStateStub.addToDeletions).not.toHaveBeenCalled();
                 expect(some(ontologyStateStub.listItem.additions, {'@id': this.id, other: 'value'})).toEqual(true);
-                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem, false);
+                expect(ontologyStateStub.saveCurrentChanges).toHaveBeenCalledWith(ontologyStateStub.listItem);
             });
         });
     });

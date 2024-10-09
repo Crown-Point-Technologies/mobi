@@ -23,16 +23,18 @@ package com.mobi.catalog.rest;
  * #L%
  */
 
+import static com.mobi.ontologies.rdfs.Resource.type_IRI;
 import static com.mobi.rest.util.RestUtils.checkStringParam;
 import static com.mobi.rest.util.RestUtils.createIRI;
-import static com.mobi.rest.util.RestUtils.createPaginatedResponseWithJsonNode;
+import static com.mobi.rest.util.RestUtils.createPaginatedResponse;
 import static com.mobi.rest.util.RestUtils.getActiveUser;
 import static com.mobi.rest.util.RestUtils.getObjectFromJsonld;
-import static com.mobi.rest.util.RestUtils.getObjectNodeFromJsonld;
 import static com.mobi.rest.util.RestUtils.getRDFFormat;
 import static com.mobi.rest.util.RestUtils.groupedModelToString;
 import static com.mobi.rest.util.RestUtils.jsonldToModel;
 import static com.mobi.rest.util.RestUtils.modelToJsonld;
+import static com.mobi.security.policy.api.xacml.XACML.POLICY_PERMIT_OVERRIDES;
+import static java.util.Arrays.asList;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -45,8 +47,9 @@ import com.mobi.catalog.api.mergerequest.MergeRequestConfig;
 import com.mobi.catalog.api.mergerequest.MergeRequestFilterParams;
 import com.mobi.catalog.api.mergerequest.MergeRequestManager;
 import com.mobi.catalog.api.ontologies.mcat.Branch;
-import com.mobi.catalog.api.ontologies.mcat.Modify;
 import com.mobi.catalog.api.ontologies.mcat.VersionedRDFRecord;
+import com.mobi.catalog.api.ontologies.mergerequests.AcceptedMergeRequest;
+import com.mobi.catalog.api.ontologies.mergerequests.ClosedMergeRequest;
 import com.mobi.catalog.api.ontologies.mergerequests.Comment;
 import com.mobi.catalog.api.ontologies.mergerequests.CommentFactory;
 import com.mobi.catalog.api.ontologies.mergerequests.MergeRequest;
@@ -56,32 +59,42 @@ import com.mobi.exception.MobiException;
 import com.mobi.jaas.api.engines.EngineManager;
 import com.mobi.jaas.api.ontologies.usermanagement.User;
 import com.mobi.ontologies.dcterms._Thing;
-import com.mobi.rest.security.annotations.ActionAttributes;
 import com.mobi.rest.security.annotations.ActionId;
-import com.mobi.rest.security.annotations.AttributeValue;
 import com.mobi.rest.security.annotations.ResourceId;
 import com.mobi.rest.security.annotations.Value;
 import com.mobi.rest.security.annotations.ValueType;
 import com.mobi.rest.util.ErrorUtils;
 import com.mobi.rest.util.LinksUtils;
+import com.mobi.rest.util.MobiNotFoundException;
 import com.mobi.rest.util.RestUtils;
+import com.mobi.security.policy.api.Decision;
+import com.mobi.security.policy.api.PDP;
+import com.mobi.security.policy.api.Request;
+import com.mobi.security.policy.api.ontologies.policy.Read;
+import com.mobi.security.policy.api.ontologies.policy.Update;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.Explode;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Model;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.ValidatingValueFactory;
+import org.eclipse.rdf4j.repository.RepositoryConnection;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.sail.SailException;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -108,6 +121,7 @@ import javax.ws.rs.core.UriInfo;
 @JaxrsResource
 @Path("/merge-requests")
 public class MergeRequestRest {
+    private final Logger log = LoggerFactory.getLogger(MergeRequestRest.class);
     private final ValueFactory vf = new ValidatingValueFactory();
     private static final ObjectMapper mapper = new ObjectMapper();
 
@@ -116,6 +130,7 @@ public class MergeRequestRest {
     private EngineManager engineManager;
     private MergeRequestFactory mergeRequestFactory;
     private CommentFactory commentFactory;
+    private PDP pdp;
 
     @Reference
     void setManager(MergeRequestManager manager) {
@@ -142,6 +157,11 @@ public class MergeRequestRest {
         this.commentFactory = commentFactory;
     }
 
+    @Reference
+    void setPdp(PDP pdp) {
+        this.pdp = pdp;
+    }
+
     /**
      * Retrieves a list of all the {@link MergeRequest}s in Mobi sorted according to the provided parameters
      * and optionally filtered by records, creators, and whether they are accepted. This list respects the Read access
@@ -151,7 +171,7 @@ public class MergeRequestRest {
      * @param offset An optional offset for the results.
      * @param limit An optional limit for the results.
      * @param asc Whether the results should be sorted ascending or descending. Default is false.
-     * @param accepted Whether the results should only be accepted or open requests.
+     * @param requestStatus Whether the results should only be accepted, closed, or open requests.
      * @param searchText An optional search text for the list.
      * @param creators An optional creator user IRI list to filter the list by.
      * @param records An optional record IRI list to filter the list by.
@@ -179,8 +199,8 @@ public class MergeRequestRest {
             @QueryParam("sort") String sort,
             @Parameter(description = "Whether the results should be sorted ascending or descending")
             @DefaultValue("false") @QueryParam("ascending") boolean asc,
-            @Parameter(description = "Whether the results should only be accepted or open requests")
-            @DefaultValue("false") @QueryParam("accepted") boolean accepted,
+            @Parameter(description = "Whether the results should only be accepted, closed, or open requests")
+            @DefaultValue("open") @QueryParam("requestStatus") String requestStatus,
             @Parameter(description = "Optional offset for the results")
             @QueryParam("offset") int offset,
             @Parameter(description = "Optional limit for the results")
@@ -201,16 +221,16 @@ public class MergeRequestRest {
         if (!StringUtils.isEmpty(searchText)) {
             builder.setSearchText(searchText);
         }
-        if (creators != null && creators.size() > 0) {
+        if (creators != null && !creators.isEmpty()) {
             builder.setCreators(creators.stream().map(vf::createIRI).collect(Collectors.toList()));
         }
-        if (assignees != null && assignees.size() > 0) {
+        if (assignees != null && !assignees.isEmpty()) {
             builder.setAssignees(assignees.stream().map(vf::createIRI).collect(Collectors.toList()));
         }
-        if (records != null && records.size() > 0) {
+        if (records != null && !records.isEmpty()) {
             builder.setOnRecords(records.stream().map(vf::createIRI).collect(Collectors.toList()));
         }
-        builder.setAscending(asc).setAccepted(accepted);
+        builder.setAscending(asc).setRequestStatus(requestStatus);
         try {
             List<MergeRequest> requests = manager.getMergeRequests(builder.build());
             Stream<MergeRequest> stream = requests.stream();
@@ -222,7 +242,7 @@ public class MergeRequestRest {
             }
             ArrayNode result = mapper.createArrayNode();
             stream.map(request -> modelToJsonld(request.getModel()))
-                    .map(RestUtils::getObjectNodeFromJsonld)
+                    .map(RestUtils::getObjectFromJsonld)
                     .forEach(result::add);
             return Response.ok(result).header("X-Total-Count", requests.size()).build();
         } catch (IllegalArgumentException ex) {
@@ -290,7 +310,7 @@ public class MergeRequestRest {
                     description = "Required IRI of the target Branch which will receive the new commits "
                     + "from the source Branch of the new MergeRequest", required = true))
             @FormParam("targetBranchId") String targetBranchId,
-            @Parameter(array = @ArraySchema(
+            @Parameter(explode = Explode.TRUE, array = @ArraySchema(
                     arraySchema = @Schema(description = "List of username of Users to assign the new MergeRequest to"),
                     schema = @Schema(implementation = String.class, description = "Username")))
             @FormParam("assignees") List<String> assignees,
@@ -384,7 +404,7 @@ public class MergeRequestRest {
             User activeUser = getActiveUser(servletRequest, engineManager);
             PaginatedSearchResults<UserCount> counts = manager.getCreators(builder.build(), activeUser.getResource());
             ArrayNode arr = serializeUserCount(counts);
-            return createPaginatedResponseWithJsonNode(uriInfo, arr, counts.getTotalSize(), limit == 0
+            return createPaginatedResponse(uriInfo, arr, counts.getTotalSize(), limit == 0
                     ? counts.getTotalSize() : limit, offset);
         } catch (IllegalArgumentException ex) {
             throw RestUtils.getErrorObjBadRequest(ex);
@@ -446,7 +466,7 @@ public class MergeRequestRest {
             User activeUser = getActiveUser(servletRequest, engineManager);
             PaginatedSearchResults<UserCount> counts = manager.getAssignees(builder.build(), activeUser.getResource());
             ArrayNode arr = serializeUserCount(counts);
-            return createPaginatedResponseWithJsonNode(uriInfo, arr, counts.getTotalSize(), limit == 0
+            return createPaginatedResponse(uriInfo, arr, counts.getTotalSize(), limit == 0
                     ? counts.getTotalSize() : limit, offset);
         } catch (IllegalArgumentException ex) {
             throw RestUtils.getErrorObjBadRequest(ex);
@@ -508,7 +528,7 @@ public class MergeRequestRest {
             User activeUser = getActiveUser(servletRequest, engineManager);
             PaginatedSearchResults<RecordCount> counts = manager.getRecords(builder.build(), activeUser.getResource());
             ArrayNode arr = serializeRecordCount(counts);
-            return createPaginatedResponseWithJsonNode(uriInfo, arr, counts.getTotalSize(), limit == 0
+            return createPaginatedResponse(uriInfo, arr, counts.getTotalSize(), limit == 0
                     ? counts.getTotalSize() : limit, offset);
         } catch (IllegalArgumentException ex) {
             throw RestUtils.getErrorObjBadRequest(ex);
@@ -581,13 +601,18 @@ public class MergeRequestRest {
             }
     )
     public Response updateMergeRequest(
+            @Context HttpServletRequest servletRequest,
             @Parameter(description = "String representing the MergeRequest ID", required = true)
             @PathParam("requestId") String requestId,
             @Parameter(description = "String representing the JSONLD representation of the updated MergeRequest",
                     required = true)
                     String newMergeRequest) {
         Resource requestIdResource = createIRI(requestId, vf);
+        User activeUser = getActiveUser(servletRequest, engineManager);
         try {
+            if (checkMergeRequestManagePermissions(requestIdResource, activeUser)) {
+                return Response.status(Response.Status.UNAUTHORIZED).build();
+            }
             manager.updateMergeRequest(requestIdResource, jsonToMergeRequest(requestIdResource, newMergeRequest));
             return Response.ok().build();
         } catch (IllegalStateException | MobiException ex) {
@@ -602,43 +627,122 @@ public class MergeRequestRest {
      * @param servletRequest The HttpServletRequest.
      * @param requestId String representing the {@link MergeRequest} ID. NOTE: Assumes ID represents an IRI unless
      *                  String begins with "_:".
-     * @return Response indicating the status of the acceptance.
+     * @return Response containing the plaintext status of the Merge Request.
      */
-    @POST
-    @Path("{requestId}")
+    @GET
+    @Path("{requestId}/status")
+    @Produces(MediaType.TEXT_PLAIN)
     @RolesAllowed("user")
     @Operation(
             tags = "merge-requests",
-            summary = "Accepts a MergeRequest by performing the merge and changing the type",
+            summary = "Returns the status of the Merge Request in plaintext",
             responses = {
                     @ApiResponse(responseCode = "200",
-                            description = "Response indicating the status of the acceptance"),
+                            description = "Response indicating the status of the changed. " +
+                                    "Plaintext can be closed, accepted, and open"),
                     @ApiResponse(responseCode = "400",
                             description = "BAD REQUEST"),
                     @ApiResponse(responseCode = "403",
                             description = "Permission Denied"),
+                    @ApiResponse(responseCode = "404",
+                            description = "Merge Request not found"),
                     @ApiResponse(responseCode = "500",
                             description = "INTERNAL SERVER ERROR"),
             }
     )
-    @ActionId(Modify.TYPE)
+    @ActionId(Read.TYPE)
     @ResourceId(type = ValueType.PROP_PATH, value = "<" + MergeRequest.onRecord_IRI + ">",
             start = @Value(type = ValueType.PATH, value = "requestId"))
-    @ActionAttributes(@AttributeValue(type = ValueType.PROP_PATH, value = "<" + MergeRequest.targetBranch_IRI + ">",
-            id = VersionedRDFRecord.branch_IRI, start = @Value(type = ValueType.PATH, value = "requestId")))
-    public Response acceptMergeRequest(
+    public Response retrieveMergeRequestStatus(
             @Context HttpServletRequest servletRequest,
             @Parameter(description = "String representing the MergeRequest ID", required = true)
-            @PathParam("requestId") String requestId) {
+            @PathParam("requestId") String requestId){
+        Resource requestIdResource = createIRI(requestId, vf);
+        try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
+            String status;
+            List<String> types = conn.getStatements(requestIdResource, vf.createIRI(type_IRI), null).stream()
+                    .map(statement -> statement.getObject().stringValue())
+                    .collect(Collectors.toUnmodifiableList());
+
+            if (types.isEmpty()) {
+                throw new MobiNotFoundException("Merge Request " + requestId + " could not be found");
+            }
+            if (types.contains(ClosedMergeRequest.TYPE)) {
+                status = "closed";
+            } else if (types.contains(AcceptedMergeRequest.TYPE)) {
+                status = "accepted";
+            } else if (types.contains(MergeRequest.TYPE)) {
+                status = "open";
+            } else {
+                throw new IllegalStateException("The Merge Request has no associated status.");
+            }
+            return Response.ok(status).build();
+        } catch (IllegalArgumentException ex) {
+            throw RestUtils.getErrorObjBadRequest(ex);
+        } catch (MobiNotFoundException ex) {
+            throw RestUtils.getErrorObjNotFound(ex);
+        } catch (IllegalStateException | MobiException ex) {
+            throw RestUtils.getErrorObjInternalServerError(ex);
+        }
+    }
+
+    /**
+     * Accepts a {@link MergeRequest} with the provided ID by completing the merge it represents and changing the
+     * type to an {@link com.mobi.catalog.api.ontologies.mergerequests.AcceptedMergeRequest}.
+     *
+     * @param servletRequest The HttpServletRequest.
+     * @param requestId String representing the {@link MergeRequest} ID. NOTE: Assumes ID represents an IRI unless
+     *                  String begins with "_:".
+     * @param action The action to be taken against the Merge Request linked to the requestId
+     * @return Response indicating the status of the taken action.
+     */
+    @POST
+    @Path("{requestId}/status")
+    @RolesAllowed("user")
+    @Operation(
+            tags = "merge-requests",
+            summary = "Updates the type (open, closed, accepted) of the Merge Request and performs the " +
+                    "subsequent action",
+            responses = {
+                    @ApiResponse(responseCode = "200",
+                            description = "Response indicating the status of the changed"),
+                    @ApiResponse(responseCode = "400", description = "BAD REQUEST"),
+                    @ApiResponse(responseCode = "403", description = "Permission Denied"),
+                    @ApiResponse(responseCode = "404", description = "Merge Request not found"),
+                    @ApiResponse(responseCode = "500", description = "INTERNAL SERVER ERROR"),
+            }
+    )
+    public Response updateMergeRequestStatus(
+            @Context HttpServletRequest servletRequest,
+            @Parameter(description = "String representing the MergeRequest ID", required = true)
+            @PathParam("requestId") String requestId,
+            @Parameter(schema = @Schema(description = "The corresponding action to take on the merge request",
+                    allowableValues = {"accept", "close", "open"},
+                    required = true))
+            @QueryParam("action") @DefaultValue("") String action ) {
         Resource requestIdResource = createIRI(requestId, vf);
         User activeUser = getActiveUser(servletRequest, engineManager);
         try {
-            manager.acceptMergeRequest(requestIdResource, activeUser);
+            if (checkMergeRequestManagePermissions(requestIdResource, activeUser)) {
+                RuntimeException throwable = new RuntimeException("User does not have modify MR permission");
+                throw RestUtils.getErrorObjUnauthorized(throwable);
+            }
+            if (action.equals("accept")) {
+                manager.acceptMergeRequest(requestIdResource, activeUser);
+            } else if (action.equals("close")) {
+                manager.closeMergeRequest(requestIdResource, activeUser);
+            } else if (action.equals("open")) {
+                manager.reopenMergeRequest(requestIdResource, activeUser);
+            } else {
+                throw new IllegalArgumentException("Not a valid action to take.");
+            }
             return Response.ok().build();
         } catch (IllegalArgumentException ex) {
-            throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.BAD_REQUEST);
+            throw RestUtils.getErrorObjBadRequest(ex);
+        } catch (MobiNotFoundException ex) {
+            throw RestUtils.getErrorObjNotFound(ex);
         } catch (IllegalStateException | MobiException ex) {
-            throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
+            throw RestUtils.getErrorObjInternalServerError(ex);
         }
     }
 
@@ -647,7 +751,7 @@ public class MergeRequestRest {
      *
      * @param requestId String representing the {@link MergeRequest} ID to delete. NOTE: Assumes ID represents an
      *                  IRI unless String begins with "_:".
-     * @return Response indicating the status of the delete.
+     * @return Response indicating the status of the delete action.
      */
     @DELETE
     @Path("{requestId}")
@@ -663,10 +767,15 @@ public class MergeRequestRest {
             }
     )
     public Response deleteMergeRequest(
+            @Context HttpServletRequest servletRequest,
             @Parameter(description = "String representing the MergeRequest ID to delete", required = true)
             @PathParam("requestId") String requestId) {
         Resource requestIdResource = createIRI(requestId, vf);
+        User activeUser = getActiveUser(servletRequest, engineManager);
         try {
+            if (checkMergeRequestManagePermissions(requestIdResource, activeUser)) {
+                return Response.status(Response.Status.UNAUTHORIZED).build();
+            }
             manager.deleteMergeRequest(requestIdResource);
             return Response.ok().build();
         } catch (IllegalArgumentException ex) {
@@ -675,6 +784,43 @@ public class MergeRequestRest {
         } catch (IllegalStateException | MobiException ex) {
             throw ErrorUtils.sendError(ex, ex.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Checks Manage Permission for MergeRequests
+     *
+     * @param requestId MergeRequest IRI
+     * @param activeUser Request User
+     * @return
+     *  True if user is creator or has manage permission of associated RDF record,
+     *  False if user is not a creator or has manage permission of associated RDF record
+     */
+    protected boolean checkMergeRequestManagePermissions(Resource requestId, User activeUser) {
+        MergeRequest mergeRequest = manager.getMergeRequest(requestId).orElseThrow(() ->
+                ErrorUtils.sendError("Merge Request " + requestId + " could not be found",
+                        Response.Status.NOT_FOUND));
+        boolean accessDenied = true;
+
+        Optional<org.eclipse.rdf4j.model.Value> creator = mergeRequest.getProperty(vf.createIRI(_Thing.creator_IRI));
+        if (creator.isPresent() && creator.get().stringValue().equals(activeUser.getResource().stringValue())) {
+            accessDenied = false;
+        }
+        // If user is not the creator then check to see if user has manage permission
+        Optional<Resource> onRecord = mergeRequest.getOnRecord_resource();
+        if (accessDenied && onRecord.isPresent()) {
+            Request request = pdp.createRequest(asList((IRI) activeUser.getResource()), new HashMap<>(),
+                    asList((IRI)onRecord.get()), new HashMap<>(),
+                    asList(vf.createIRI(Update.TYPE)), new HashMap<>());
+            log.debug(request.toString());
+            com.mobi.security.policy.api.Response response = pdp.evaluate(request,
+                    vf.createIRI(POLICY_PERMIT_OVERRIDES));
+            log.debug(response.toString());
+
+            if (response.getDecision().equals(Decision.PERMIT)) {
+                accessDenied = false;
+            }
+        }
+        return accessDenied;
     }
 
     /**
@@ -711,7 +857,7 @@ public class MergeRequestRest {
                     .forEach(comments -> {
                         ArrayNode commentArr = mapper.createArrayNode();
                         comments.stream()
-                                .map(comment -> getObjectNodeFromJsonld(
+                                .map(comment -> getObjectFromJsonld(
                                         groupedModelToString(comment.getModel(), RDFFormat.JSONLD)))
                                 .forEach(commentArr::add);
                         result.add(commentArr);
@@ -833,7 +979,9 @@ public class MergeRequestRest {
     /**
      * Updates an existing {@link Comment} that has the {@code commentId} with the provided String of
      * {@code newCommentStr}.
-     *
+     * @param servletRequest The HttpServletRequest.
+     * @param requestId String representing the {@link MergeRequest} ID. NOTE: Assumes ID represents an IRI unless
+     *                  String begins with "_:".
      * @param commentId String representing the {@link Comment} ID. NOTE: Assumes ID represents an IRI unless
      *                  String begins with "_:".
      * @param newCommentStr String representing the new description of the updated {@link Comment}.
@@ -854,15 +1002,29 @@ public class MergeRequestRest {
             }
     )
     public Response updateComment(
+            @Context HttpServletRequest servletRequest,
+            @Parameter(description = "String representing the MergeRequest ID", required = true)
+            @PathParam("requestId") String requestId,
             @Parameter(description = "String representing the Comment ID", required = true)
             @PathParam("commentId") String commentId,
             @Parameter(description = "String representing the new description of the updated Comment", required = true)
                     String newCommentStr) {
+        manager.getMergeRequest(createIRI(requestId, vf)).orElseThrow(() ->
+                ErrorUtils.sendError("MergeRequest " + requestId + " could not be found",
+                        Response.Status.NOT_FOUND));
+
         Resource commentIdResource = createIRI(commentId, vf);
         Comment comment = manager.getComment(commentIdResource).orElseThrow(() ->
                 ErrorUtils.sendError("Comment " + commentId + " could not be found",
                         Response.Status.BAD_REQUEST));
         checkStringParam(newCommentStr, "Comment string is required");
+
+        User activeUser = getActiveUser(servletRequest, engineManager);
+        Optional<org.eclipse.rdf4j.model.Value> creator = comment.getProperty(vf.createIRI(_Thing.creator_IRI));
+        if (creator.isPresent() && !(creator.get().stringValue().equals(activeUser.getResource().stringValue()))) {
+            return Response.status(Response.Status.UNAUTHORIZED).build();
+        }
+
         comment.setProperty(vf.createLiteral(newCommentStr), vf.createIRI(_Thing.description_IRI));
         try {
             manager.updateComment(commentIdResource, comment);

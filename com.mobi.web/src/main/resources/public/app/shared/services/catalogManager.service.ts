@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams, HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { has, find, get, forEach, difference } from 'lodash';
 import { catchError, map, mergeMap, switchMap, tap } from 'rxjs/operators';
@@ -41,7 +41,7 @@ import { TagConfig } from '../models/tagConfig.interface';
 import { KeywordCount } from '../models/keywordCount.interface';
 import { ProgressSpinnerService } from '../components/progress-spinner/services/progressSpinner.service';
 import { CATALOG, DCTERMS } from '../../prefixes';
-import { condenseCommitId, createHttpParams, getBeautifulIRI, getDctermsValue, handleError, paginatedConfigToHttpParams } from '../utility';
+import { condenseCommitId, createHttpParams, getBeautifulIRI, getDctermsValue, handleError, handleErrorObject, paginatedConfigToHttpParams } from '../utility';
 import { EventTypeConstants, EventWithPayload } from '../models/eventWithPayload.interface';
 
 /**
@@ -424,12 +424,13 @@ export class CatalogManagerService {
      * @returns {Observable<HttpResponse<JSONLDObject[]>>} An Observable that resolves with the full HttpResponse of or
      * is rejected with a error message
      */
-    getRecordVersions(recordId: string, catalogId: string, paginatedConfig?: PaginatedConfig): Observable<HttpResponse<JSONLDObject[]>> {
+    getRecordVersions(recordId: string, catalogId: string, paginatedConfig?: PaginatedConfig, isTracked = false): Observable<HttpResponse<JSONLDObject[]>> {
         let params = paginatedConfigToHttpParams(paginatedConfig);
         params = this._setDefaultSort(params);
         const url = `${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/versions`;
-        return this.spinnerSrv.track(this.http.get<JSONLDObject[]>(url, {params, observe: 'response'}))
+        const request = this.http.get<JSONLDObject[]>(url, {params, observe: 'response'})
             .pipe(catchError(handleError));
+        return this.spinnerSrv.trackedRequest(request, isTracked);
     }
 
     /**
@@ -495,7 +496,7 @@ export class CatalogManagerService {
             fd.append('description', tagConfig.description);
         }
         return this.spinnerSrv.track(this.http.post(`${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/tags`, fd, {responseType: 'text'}))
-            .pipe(catchError(handleError));
+            .pipe(catchError(handleErrorObject));
     }
 
     /**
@@ -670,13 +671,14 @@ export class CatalogManagerService {
      * @returns {Observable<HttpResponse<JSONLDObject[]>>} An Observable that resolves with the full HttpResponse of or
      * is rejected with a error message
      */
-    getRecordBranches(recordId: string, catalogId: string, paginatedConfig?: PaginatedConfig, applyUserFilter = false): Observable<HttpResponse<JSONLDObject[]>> {
+    getRecordBranches(recordId: string, catalogId: string, paginatedConfig?: PaginatedConfig, applyUserFilter = false, isTracked = false): Observable<HttpResponse<JSONLDObject[]>> {
         let params = paginatedConfigToHttpParams(paginatedConfig);
         params = this._setDefaultSort(params);
         params = params.set('applyUserFilter', applyUserFilter);
         const url = `${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/branches`;
-        return this.spinnerSrv.track(this.http.get<JSONLDObject[]>(url, {params, observe: 'response'}))
+        const request = this.http.get<JSONLDObject[]>(url, {params, observe: 'response'})
             .pipe(catchError(handleError));
+        return this.spinnerSrv.trackedRequest(request, isTracked);
     }
 
     /**
@@ -859,9 +861,8 @@ export class CatalogManagerService {
      */
     getCompiledResource(commitId: string, entityId: string, isTracked = false): Observable<JSONLDObject[]> {
         const url = `${this.commitsPrefix}/${encodeURIComponent(commitId)}/resource`;
-        const request =  this.http.get<JSONLDObject[]>
-        (url, {params: createHttpParams({ entityId })});
-        return this.spinnerSrv.trackedRequest(request, isTracked).pipe(catchError(handleError)).pipe(catchError(handleError));
+        const request =  this.http.get<JSONLDObject[]>(url, {params: createHttpParams({ entityId })});
+        return this.spinnerSrv.trackedRequest(request, isTracked).pipe(catchError(handleError));
     }
 
     /**
@@ -931,7 +932,7 @@ export class CatalogManagerService {
     createBranchCommit(branchId: string, recordId: string, catalogId: string, message: string): Observable<string> {
         const url = `${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/branches/${encodeURIComponent(branchId)}/commits`;
         return this.spinnerSrv.track(this.http.post(url, null, {params: createHttpParams({ message }), responseType: 'text'}))
-            .pipe(catchError(handleError));
+            .pipe(catchError(handleErrorObject));
     }
 
     /**
@@ -1048,18 +1049,29 @@ export class CatalogManagerService {
      * @returns {Observable} An Observable that resolves to the compiled resource or rejects with an error message.
      */
     getResource(commitId: string, branchId: string, recordId: string, catalogId: string, applyInProgressCommit?: boolean, format = 'jsonld'): Observable<string | JSONLDObject[]> {
-        const config = {
-            headers: {
-                'Content-Type': undefined,
-                'Accept': 'text/plain'
-            },
-            params: createHttpParams({
-                format,
-                applyInProgressCommit: !!applyInProgressCommit
-            })
-        };
-        return this.spinnerSrv.track(this.http.get<string | JSONLDObject[]>(`${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/branches/${encodeURIComponent(branchId)}/commits/${encodeURIComponent(commitId)}/resource`, config))
-            .pipe(catchError(handleError));
+      const params = {
+        format,
+        applyInProgressCommit: !!applyInProgressCommit
+      };
+      let headers = new HttpHeaders();
+      headers = headers.append('Accept', format === 'jsonld' ? 'application/json' : 'text/plain');
+      const url = `${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/branches/${encodeURIComponent(branchId)}/commits/${encodeURIComponent(commitId)}/resource`;
+      return this.spinnerSrv.track(this.http.get(url, {
+        responseType: 'text',
+        observe: 'response',
+        headers,
+        params: createHttpParams(params)
+      })).pipe(
+        catchError(handleError),
+        map((response: HttpResponse<string>) => {
+          const contentType = response.headers.get('Content-Type');
+          if (contentType === 'application/json') {
+              return (JSON.parse(response.body)) as JSONLDObject[];
+          } else {
+              return response.body;
+          }
+        })
+      );
     }
 
     /**
@@ -1107,7 +1119,13 @@ export class CatalogManagerService {
      */
     getData:any;
     getInProgressCommit(recordId: string, catalogId: string): Observable<Difference> {
-        this.getData = this.spinnerSrv.track(this.http.get<Difference>(`${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/in-progress-commit`));
+        this.getData = this.spinnerSrv.track(this.http.get<{additions: JSONLDObject[], deletions: JSONLDObject[]}>(`${this.prefix}/${encodeURIComponent(catalogId)}/records/${encodeURIComponent(recordId)}/in-progress-commit`))
+          .pipe(map(response => {
+              const diff = new Difference();
+              diff.additions = response.additions;
+              diff.deletions = response.deletions;
+              return diff;
+          }));
         return this.getData;
     }
 

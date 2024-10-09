@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -199,7 +199,7 @@ export class IriSelectOntologyComponent implements OnInit, OnChanges {
         })), group => group.namespace.toUpperCase());
     }
     getName(value: string, isBlankNode?: boolean): string {
-        return isBlankNode ? this.os.getBlankNodeValue(value) : this.os.getEntityNameByListItem(value);
+        return isBlankNode ? this.os.getBlankNodeValue(value) : this.os.getEntityName(value);
     }
     displayFn(iriOption: IriOption): string {
         return iriOption ? iriOption.name : '';

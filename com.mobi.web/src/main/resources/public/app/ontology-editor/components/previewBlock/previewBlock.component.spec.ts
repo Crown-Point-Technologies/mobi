@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -36,7 +36,7 @@ import { cleanStylesFromDOM } from '../../../../../public/test/ts/Shared';
 import { OntologyListItem } from '../../../shared/models/ontologyListItem.class';
 import { OntologyManagerService } from '../../../shared/services/ontologyManager.service';
 import { OntologyStateService } from '../../../shared/services/ontologyState.service';
-import { SerializationSelectComponent } from '../serializationSelect/serializationSelect.component';
+import { SerializationSelectComponent } from '../../../shared/components/serializationSelect/serializationSelect.component';
 import { PreviewBlockComponent } from './previewBlock.component';
 
 describe('Preview Block component', function() {
@@ -179,23 +179,11 @@ describe('Preview Block component', function() {
                 }));
             });
         });
-        it('should download the ontology', function() {
-            ontologyStateStub.listItem.versionedRdfRecord.title = 'This %$#is*&)( a<>{}//?Title';
-            component.activePage = {serialization: 'jsonld'};
-            component.download();
-            expect(ontologyManagerStub.downloadOntology).toHaveBeenCalledWith(ontologyStateStub.listItem.versionedRdfRecord.recordId, ontologyStateStub.listItem.versionedRdfRecord.branchId, ontologyStateStub.listItem.versionedRdfRecord.commitId, 'jsonld', 'ThisisaTitle');
-        });
     });
     it('should call getPreview when the button is clicked', function() {
         spyOn(component, 'setPreview');
         const button = element.queryAll(By.css('button.refresh-button'))[0];
         button.triggerEventHandler('click', null);
         expect(component.setPreview).toHaveBeenCalledWith();
-    });
-    it('should call download when the download button is clicked', function() {
-        spyOn(component, 'download');
-        const button = element.queryAll(By.css('button.download-button'))[0];
-        button.triggerEventHandler('click', null);
-        expect(component.download).toHaveBeenCalledWith();
     });
 });

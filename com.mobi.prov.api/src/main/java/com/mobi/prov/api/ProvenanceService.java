@@ -6,7 +6,7 @@ package com.mobi.prov.api;
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -26,7 +26,6 @@ package com.mobi.prov.api;
 import com.mobi.ontologies.provo.Activity;
 import com.mobi.prov.api.builder.ActivityConfig;
 import java.util.List;
-import java.util.Map;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.repository.RepositoryConnection;
 

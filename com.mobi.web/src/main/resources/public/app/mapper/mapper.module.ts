@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -53,6 +53,7 @@ import { RunMappingDatasetOverlayComponent } from './components/runMappingDatase
 import { RunMappingDownloadOverlayComponent } from './components/runMappingDownloadOverlay/runMappingDownloadOverlay.component';
 import { RunMappingOntologyOverlayComponent } from './components/runMappingOntologyOverlay/runMappingOntologyOverlay.component';
 import { ViewMappingModalComponent } from './components/viewMappingModal/viewMappingModal.component';
+import { IncompatibleWarningModalComponent } from './components/incompatible-warning-modal/incompatible-warning-modal.component';
 
 /**
  * @namespace mapper
@@ -92,7 +93,8 @@ import { ViewMappingModalComponent } from './components/viewMappingModal/viewMap
         RunMappingDatasetOverlayComponent,
         RunMappingDownloadOverlayComponent,
         RunMappingOntologyOverlayComponent,
-        ViewMappingModalComponent
+        ViewMappingModalComponent,
+        IncompatibleWarningModalComponent
     ]
 })
 export class MapperModule {}

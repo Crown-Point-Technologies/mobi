@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -121,11 +121,11 @@ export class AnnotationOverlayComponent implements OnInit {
             options: grouped[namespace].map(annotation => ({
                 annotation,
                 disabled: this.isPropDisabled(annotation),
-                name: this.os.getEntityNameByListItem(annotation)
+                name: this.os.getEntityName(annotation)
             }))
         }));
         rtn.forEach(group => {
-            group.options = sortBy(group.options, option => this.os.getEntityNameByListItem(option.annotation));
+            group.options = sortBy(group.options, option => this.os.getEntityName(option.annotation));
         });
         return rtn;
     }
@@ -199,7 +199,7 @@ export class AnnotationOverlayComponent implements OnInit {
         this.dialogRef.close(edited);
     }
     getName(iri: string): string {
-        return this.os.getEntityNameByListItem(iri);
+        return this.os.getEntityName(iri);
     }
     validateValue(newValue: string[]): void {
         this.type = newValue[0];

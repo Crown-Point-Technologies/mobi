@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2023 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -62,6 +62,7 @@ describe('Commit History Table component', function() {
       recordId?: string,
       type?: string,
       tags?: JSONLDObject[],
+      branches?: JSONLDObject[],
       headers?: { [key: string]: string }
     } = {};
 
@@ -94,6 +95,7 @@ describe('Commit History Table component', function() {
 
         matDialog = TestBed.inject(MatDialog) as jasmine.SpyObj<MatDialog>;
         catalogManagerStub = TestBed.inject(CatalogManagerService) as jasmine.SpyObj<CatalogManagerService>;
+        catalogManagerStub.getRecordBranches.and.returnValue(of(new HttpResponse({body: []})));
 
         const commitId = 'commitId';
         const commit: Commit = {
@@ -113,6 +115,15 @@ describe('Commit History Table component', function() {
         const tag: JSONLDObject = {
             '@id': 'urn:tagId'
         };
+        const branches: JSONLDObject[] = [{
+            '@id': '',
+            '@type': [],
+            [`${DCTERMS}title`]: [{ '@value': 'title' }],
+            [`${DCTERMS}description`]: [{ '@value': 'description' }],
+            [`${DCTERMS}modified`]: [{ '@value': '2023-01-01T00:00:00Z' }],
+            [`${CATALOG}head`]: [{ '@id': 'commitId' }]
+        }];
+
         testData = {
             error: 'error',
             commitId: commitId,
@@ -121,6 +132,7 @@ describe('Commit History Table component', function() {
             commits: [commit],
             recordId: 'record',
             type: `${ONTOLOGYEDITOR}OntologyRecord`,
+            branches : branches,
             tags: [tag]
         };
         component.headTitle = 'title';
@@ -130,6 +142,7 @@ describe('Commit History Table component', function() {
         component.recordId = testData.recordId;
         component.type = testData.type;
         component.tags = testData.tags;
+        component.branches = testData.branches;
         spyOn<EventEmitter<Commit[]>>(component.receiveCommits, 'emit');
     });
     afterEach(function() {
@@ -228,7 +241,7 @@ describe('Commit History Table component', function() {
             fixture.detectChanges();
             await fixture.whenStable();
             expect(matDialog.open).toHaveBeenCalledWith(CommitInfoOverlayComponent, {
-                data: { commit: testData.commit, ontRecordId: testData.recordId, type: testData.type }
+                data: { commit: testData.commit, recordId: testData.recordId, type: testData.type }
             });
         });
         describe('should get the list of commits', function() {
@@ -389,13 +402,15 @@ describe('Commit History Table component', function() {
                 });
                 it('not provided', async function() {
                     catalogManagerStub.getRecordVersions.calls.reset();
+                    catalogManagerStub.getRecordVersions.and.returnValue(of());
                     component.tags = undefined;
-                    component.recordId = undefined;
+                    component.recordId = 'recordid';
                     fixture.detectChanges();
                     await fixture.whenStable();
 
                     component.getTags();
-                    expect(catalogManagerStub.getRecordVersions).not.toHaveBeenCalled();
+
+                    expect(catalogManagerStub.getRecordVersions).toHaveBeenCalledWith('recordid', '');
                     expect(component.tagObjects).toEqual([]);
                 });
             });
@@ -419,6 +434,50 @@ describe('Commit History Table component', function() {
                     description: 'description'
                 };
                 expect(component.tagObjects).toEqual([tag]);
+            });
+        });
+    });
+    describe('should get the list of branch', function() {
+        beforeEach(function() {
+            component.branches = undefined;
+        });
+        describe('If Branches has been updated', function() {
+            describe('branches are retrieved', function() {
+                beforeEach(function() {
+                    component.recordId = 'urn:record';
+                    component.catalogId = '';
+                });
+                it('successfully', async function() {
+                    catalogManagerStub.getRecordBranches.and.returnValue(of(new HttpResponse({body: [{
+                            '@id': 'urn:catalogId',
+                            '@type': [],
+                            [`${DCTERMS}title`]: [{ '@value': 'title' }],
+                            [`${DCTERMS}description`]: [{ '@value': 'description' }],
+                            [`${DCTERMS}modified`]: [{ '@value': '2023-01-01T00:00:00Z' }],
+                            [`${CATALOG}head`]: [{ '@id': 'commitId' }]
+                        }]})));
+                    await component.getBranches();
+
+                    expect(catalogManagerStub.getRecordBranches).toHaveBeenCalledWith('urn:record', '');
+                    expect(component.error).toEqual('');
+                    const branch: JSONLDObject  = {
+                        '@id': 'urn:catalogId',
+                        '@type': [],
+                        'http://purl.org/dc/terms/title': [{'@value': 'title'}],
+                        'http://purl.org/dc/terms/description': [{'@value': 'description'}],
+                        'http://purl.org/dc/terms/modified': [{'@value': '2023-01-01T00:00:00Z'}],
+                        'http://mobi.com/ontologies/catalog#head': [{'@id': 'commitId'}]
+                    };
+                    expect(component.branches).toEqual([branch]);
+                });
+                it('unless an error occurs', async function() {
+                    catalogManagerStub.getRecordBranches.and.returnValue(throwError(testData.error));
+                    await component.getBranches();
+
+                    expect(catalogManagerStub.getRecordBranches).toHaveBeenCalledWith('urn:record', '');
+                    expect(component.error).toEqual(testData.error);
+                    expect(component.branches).toEqual([]);
+                });
             });
         });
     });
@@ -463,7 +522,7 @@ describe('Commit History Table component', function() {
 
             const id = element.queryAll(By.css('table tr td.commit-id a'))[0];
             id.triggerEventHandler('click', null);
-            expect(matDialog.open).toHaveBeenCalledWith(CommitInfoOverlayComponent, {data: {commit: testData.commit, ontRecordId: testData.recordId, type: testData.type}});
+            expect(matDialog.open).toHaveBeenCalledWith(CommitInfoOverlayComponent, {data: {commit: testData.commit, recordId: testData.recordId, type: testData.type}});
         });
     });
 });
