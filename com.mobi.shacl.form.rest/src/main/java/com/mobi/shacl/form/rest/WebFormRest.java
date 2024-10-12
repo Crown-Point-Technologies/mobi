@@ -162,9 +162,9 @@ public class WebFormRest {
         try (RepositoryConnection conn = configProvider.getRepository().getConnection()) {
             conn.begin();
             try {
-                Model propertyShapeModel = jsonldToModel(propertyShape);
+                Model propertyShapeModel = jsonldToModel(propertyShape, true);
                 if (!StringUtils.isBlank(focusNode)) {
-                    Model focusNodeModel = jsonldToModel(focusNode);
+                    Model focusNodeModel = jsonldToModel(focusNode, true);
                     if (focusNodeModel.size() > 0) {
                         if (focusNodeModel.subjects().size() != 1) {
                             throw new IllegalArgumentException("There must be exactly one subject in the focus node");
