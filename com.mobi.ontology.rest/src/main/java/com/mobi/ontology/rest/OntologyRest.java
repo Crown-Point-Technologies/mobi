@@ -137,22 +137,16 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.mobi.rest.util.RestQueryUtils.QUERY_INVALID_MESSAGE;
-import static com.mobi.rest.util.RestUtils.*;
-import static com.mobi.security.policy.api.xacml.XACML.POLICY_PERMIT_OVERRIDES;
-
 @Path("/ontologies")
 @Component(service = OntologyRest.class, immediate = true)
 @JaxrsResource
 public class OntologyRest {
-    private Difference difference;
 
     private final ModelFactory modelFactory = new DynamicModelFactory();
     private final ValueFactory valueFactory = new ValidatingValueFactory();
 
     @Reference
     protected OntologyManager ontologyManager;
-    private String GET_ALL_CLASSES;
 
     @Reference
     protected CatalogConfigProvider configProvider;
@@ -412,6 +406,59 @@ public class OntologyRest {
         } catch (MobiException e) {
             throw ErrorUtils.sendError(e, e.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Optionally gets the Ontology based on the provided IDs.
+     *
+     * @param servletRequest        The HttpServletRequest.
+     * @param recordIdStr           the record ID String to process.
+     * @param branchIdStr           the branch ID String to process.
+     * @param commitIdStr           the commit ID String to process.
+     * @param applyInProgressCommit Boolean indicating whether or not any in progress commits by user should be
+     *                              applied to the return value
+     * @param conn
+     * @return an Optional containing the Ontology if it was found.
+     */
+    private Optional<Ontology> getOntology(HttpServletRequest servletRequest, String recordIdStr, String branchIdStr,
+                                           String commitIdStr, boolean applyInProgressCommit,
+                                           RepositoryConnection conn) {
+        checkStringParam(recordIdStr, "The recordIdStr is missing.");
+        Optional<Ontology> optionalOntology;
+        try {
+            Resource recordId = valueFactory.createIRI(recordIdStr);
+
+            if (StringUtils.isNotBlank(commitIdStr)) {
+                if (StringUtils.isNotBlank(branchIdStr)) {
+                    optionalOntology = ontologyManager.retrieveOntology(recordId,
+                            valueFactory.createIRI(branchIdStr), valueFactory.createIRI(commitIdStr));
+                } else {
+                    optionalOntology = ontologyManager.retrieveOntologyByCommit(recordId,
+                            valueFactory.createIRI(commitIdStr));
+                }
+            } else if (StringUtils.isNotBlank(branchIdStr)) {
+                optionalOntology = ontologyManager.retrieveOntology(recordId, valueFactory.createIRI(branchIdStr));
+            } else {
+                optionalOntology = ontologyManager.retrieveOntology(recordId);
+            }
+
+            if (optionalOntology.isPresent() && applyInProgressCommit) {
+                User user = getActiveUser(servletRequest, engineManager);
+                Optional<InProgressCommit> inProgressCommitOpt = commitManager.getInProgressCommitOpt(
+                        configProvider.getLocalCatalogIRI(), valueFactory.createIRI(recordIdStr), user, conn);
+
+                if (inProgressCommitOpt.isPresent()) {
+                    optionalOntology = Optional.of(ontologyManager.applyChanges(optionalOntology.get(),
+                            inProgressCommitOpt.get()));
+                }
+            }
+        } catch (IllegalArgumentException ex) {
+            throw RestUtils.getErrorObjBadRequest(ex);
+        } catch (IllegalStateException | MobiException ex) {
+            throw RestUtils.getErrorObjInternalServerError(ex);
+        }
+
+        return optionalOntology;
     }
 
     /**

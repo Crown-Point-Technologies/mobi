@@ -1,0 +1,23 @@
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX ex: <urn:ex:>
+CONSTRUCT {
+  ?blank_node a owl:NegativePropertyAssertion ;
+        owl:sourceIndividual %ENTITY% ;
+        ?directpred ?directobj .
+  ?blank_node ex:attachedObj ?attachedObj .
+  ?attachedObj ?p2 ?o2 .
+}
+WHERE {
+  ?blank_node a owl:NegativePropertyAssertion ;
+        owl:sourceIndividual %ENTITY% .
+  OPTIONAL {
+    ?blank_node ?directpred ?directobj .
+  }
+  OPTIONAL {
+    ?blank_node ex:attachedObj ?attachedObj .
+    OPTIONAL {
+      ?attachedObj ?p2 ?o2 .
+    }
+  }
+}

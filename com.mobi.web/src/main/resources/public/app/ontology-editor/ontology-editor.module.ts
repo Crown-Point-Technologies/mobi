@@ -178,7 +178,6 @@ import { NegativeDataPropertyOverlayComponent } from './components/negative-data
         TreeItemComponent,
         UsagesBlockComponent,
         VisualizationTabComponent,
-        OntologyDownloadModalComponent,
         FindViewComponent,
         QueryViewComponent,
         PropertyChainBlockComponent,

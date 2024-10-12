@@ -111,7 +111,6 @@ import { RdfUpload } from '../models/rdfUpload.interface';
 import { SettingManagerService } from './settingManager.service';
 import { VersionedRdfUploadResponse } from '../models/versionedRdfUploadResponse.interface';
 import { XACMLRequest } from '../models/XACMLRequest.interface';
-import {ChangesItem} from '../../ontology-editor/components/savedChangesTab/savedChangesTab.component';
 
 /**
  * @class shared.OntologyStateService
@@ -270,6 +269,25 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
      */
     getEntityName(entityId: string): string {
       return this._getEntityNameByListItem(entityId);
+    }
+    /**
+     *Get the general class axiom
+     *
+     * @return {Observable<JSONLDObject[]>}
+     **/
+    getSelectedGeneralClassAxiom(listItem: OntologyListItem = this.listItem){
+        return this.om.getGeneralClassAxiom(listItem.versionedRdfRecord.recordId,listItem.selected['@id']);
+    }
+    /**
+     *Get the general class axiom
+     *
+     * @return {Observable<JSONLDObject[]>}
+     **/
+    getGeneralClassAxioms(listItem: OntologyListItem = this.listItem){
+        return this.om.getAllGeneralClassAxioms(listItem.versionedRdfRecord.recordId);
+    }
+    getNegativeProperty(listItem: OntologyListItem = this.listItem){
+        return this.om.getNegativeProperty(listItem.versionedRdfRecord.recordId,listItem.selected['@id']);
     }
     /**
      * Returns the Ontology IRI associated with an OntologyRecord. If no JSON-LD Object of the Record is provided, will
@@ -963,7 +981,7 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
      * @param {number} [key=undefined] An optional specific page state key to use when setting the opened value. In this
      *    case it is expected to always be undefined, but the generic {@link HierarchyNode} expects the parameter
      */
-    setNoDomainsOpened(isOpened: boolean, key: number = undefined): void {
+    setNoDomainsOpened2(isOpened: boolean, key: number = undefined): void {
         set(this.listItem.editorTabStates, 
           this._getOpenPath(key, this.listItem.versionedRdfRecord.recordId, 'noDomainsOpened'), 
           isOpened
@@ -1052,7 +1070,7 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
      * @param recordId 
      * @returns 
      */
-    getNoDomainsOpened(recordId: string, key: number = undefined): boolean {
+    getNoDomainsOpened2(recordId: string, key: number = undefined): boolean {
         return get(this.listItem.editorTabStates, this._getOpenPath(key, recordId, 'noDomainsOpened'), false);
     }
     /**
@@ -2250,7 +2268,7 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
      * Deletes the currently selected Annotation Property from the currently selected {@link OntologyListItem}. Updates 
      * the InProgressCommit as well.
      **/
-    extractGenids(response: JSONLDObject): string[] {
+    extractGenids2(response: JSONLDObject): string[] {
         const genids = [];
 
         if (response[`${OWL}propertyChainAxiom`]) {
@@ -2265,7 +2283,7 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
         }
     }
 
-    extractRemovePropertyChainValues(response, genId: string): JSONLDObject[] {
+    extractRemovePropertyChainValues2(response, genId: string): JSONLDObject[] {
         const obj = response.find(obj => obj['@id'] === genId);
 
         if (!obj){
@@ -2285,7 +2303,7 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
     /**
      *Delete the currently property chain axiom from the current `listItem`.
      * **/
-    deletePropertyChainAxiom(){
+    deletePropertyChainAxiom2(){
         const genIds = this.extractGenids(this.listItem.selected);
         for (let i=0; i<genIds.length;i++){
             const deleteDataFromInProgress = this.extractRemovePropertyChainValues(this.listItem.inProgressCommit.additions,genIds[i]);
