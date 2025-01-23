@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2025 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,7 +21,7 @@
  * #L%
  */
 import { HttpErrorResponse } from '@angular/common/http';
-import { forkJoin, throwError, from, Observable, of, Subject, merge as rxjsMerge } from 'rxjs';
+import {forkJoin, throwError, from, Observable, of, Subject, merge as rxjsMerge, BehaviorSubject} from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 import {
     assign,
@@ -121,6 +121,8 @@ import { XACMLRequest } from '../models/XACMLRequest.interface';
 @Injectable()
 export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
     type = `${ONTOLOGYEDITOR}OntologyRecord`;
+    private labelSource = new BehaviorSubject<any>([]);
+    label$ = this.labelSource.asObservable();
     isPreserve = false;
     private _updateRefsExclude = [
         'element',
@@ -196,6 +198,10 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
             ).subscribe();
     }
     // Updates state based on Event type. Handles branch removals and accept merge requests.
+    _updateLabel(newLabel:any){
+        this.labelSource.next(newLabel);
+    }
+
     _handleEventWithPayload(eventType: string, payload: EventPayload): Observable<null>{
         if (eventType === EventTypeConstants.EVENT_BRANCH_REMOVAL) {
             return this._handleEventBranchRemoval(payload);
@@ -2232,8 +2238,7 @@ export class OntologyStateService extends VersionedRdfState<OntologyListItem> {
         }
     
         extractRemovePropertyChainValues(response, genId: string): JSONLDObject[] {
-            const obj = response.find(obj => obj['@id'] === genId);
-    
+            const obj = response?.find(obj => obj['@id'] === genId);
             if (!obj){
                 return [];
             }

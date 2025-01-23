@@ -4,23 +4,23 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2025 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-import { Component, Input, OnChanges, OnInit } from '@angular/core';
+import { Component, Input, SimpleChanges, OnChanges, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { OntologyManagerService } from '../../../shared/services/ontologyManager.service';
 import { PropertyChainOverlayComponent } from '../property-chain-overlay/property-chain-overlay.component';
@@ -30,6 +30,9 @@ import { ConfirmModalComponent } from '../../../shared/components/confirmModal/c
 import {DCTERMS, OWL, RDF, RDFS} from '../../../prefixes';
 import {CatalogManagerService} from '../../../shared/services/catalogManager.service';
 import {PropertyManagerService} from '../../../shared/services/propertyManager.service';
+import {cloneDeep, remove} from "lodash";
+import {map, switchMap} from "rxjs/operators";
+import {of} from "rxjs";
 
 interface PropertyChainModel {
   genId:string,
@@ -58,34 +61,46 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
       private pm: PropertyManagerService
   ) { }
 
-  async ngOnInit(): Promise<any> {
+  async ngOnInit(){
     this.updatePropertyChainData();
+    this.os.label$.subscribe(updateLabel =>{
+      this.updateLabel();
+    });
   }
 
-    async ngOnChanges() {
-      this.oldHP = this.hasParent;
-      this.objectProp  = this.om.getEntityName(this.os.listItem.selected);
-      const selectedLabel = this.os.listItem.selected[`${RDFS}label`];
-      const selectedAnnotationsLabel = selectedLabel?.[0]['@value'];
-      const selectedProperty: string = this.os.listItem.selected[`${DCTERMS}title`];
-      const selectedTitle = selectedProperty?.[0]['@value'];
-       if (selectedAnnotationsLabel){
-        this.hasParent = selectedAnnotationsLabel;
-      } else if (selectedTitle){
-        this.hasParent = selectedTitle;
-      } else {
-        this.hasParent = this.om.getEntityName(this.os.listItem.selected);
-      }
-      this.updateProperties();
-  }
+    async ngOnChanges(changes: SimpleChanges) {
+        if (changes.selected && !changes.selected.firstChange) {
+            this.updatePropertyChainData();  // Update property chain data when 'selected' changes
+            this.updateProperties();          // Recalculate properties
+        }
+    }
 
   updatePropertyChainData() {
     const selectedResponse: any = this.os.listItem.selected;
     const genids = this.os.extractGenids(selectedResponse);
     const response = this.os.listItem.selectedBlankNodes;
+    this.propertyChainDatas = [];
     if (response && genids) {
       this.extractRDFValues(response, genids);
+    }
   }
+
+  updateLabel(){
+    this.oldHP = this.hasParent;
+    this.objectProp  = this.om.getEntityName(this.os.listItem.selected);
+    const selectedLabel = this.os.listItem.selected[`${RDFS}label`];
+    const selectedAnnotationsLabel = selectedLabel?.[0]['@value'];
+    const selectedProperty: string = this.os.listItem.selected[`${DCTERMS}title`];
+    const selectedTitle = selectedProperty?.[0]['@value'];
+    if (selectedAnnotationsLabel){
+      this.hasParent = selectedAnnotationsLabel;
+    } else if (selectedTitle){
+      this.hasParent = selectedTitle;
+    } else {
+      this.hasParent = this.om.getEntityName(this.os.listItem.selected);
+    }
+
+    this.updateProperties();
   }
 
   getLabelFromEntityIRI(entityIRI:string):string {
@@ -188,90 +203,130 @@ export class PropertyChainBlockComponent implements OnInit, OnChanges {
           },
         })
         .afterClosed()
-        .subscribe((result) => {
-          if (result) {
-            this.cm.getData.subscribe(data =>{
-              const newGenid = this.extractPropertyChainAxioms(data.additions);
-              const properties = result.additionalProperties;
+        .pipe(
+            switchMap((result) => {
+              if (result) {
+                const properties = result.additionalProperties;
+                return this.os.getEntity(this.os.listItem.selected['@id']).pipe(
+                    map((data) => ({ data, properties })
+                    )
+                );
+              } else {
+                return of(null);
+              }
+            })
+        )
+        .subscribe(
+            (response) => {
+              if (response) {
+                const { data, properties } = response;
+                const newGenid = this.extractPropertyChainAxioms(data);
 
-              const chainItem : PropertyChainModel= {
-                genId: newGenid,
-                values: properties,
-                formattedValuesStr: this.formatAdditionalProperties(properties)
-              };
-              this.propertyChainDatas.push(chainItem);
-              this.pm.addPropertyId(this.os.listItem.selected, `${OWL}propertyChainAxiom`, newGenid);
-            });
+                const chainItem: PropertyChainModel = {
+                  genId: newGenid,
+                  values: properties,
+                  formattedValuesStr: this.formatAdditionalProperties(properties),
+                };
 
-          }
-        });
+                this.propertyChainDatas.push(chainItem);
+                this.pm.addPropertyId(this.os.listItem.selected, `${OWL}propertyChainAxiom`, newGenid);
+              }
+            },
+            (error) => {
+              console.error('Error fetching entity data:', error);
+            }
+        );
   }
 
-  openRemoveOverlay(propIndex: number, propValue: string,removeGenId:string,removeValues:string[]) {
-    this.dialog
-        .open(ConfirmModalComponent, {
-          data: {
-            content: `<p>Are you sure you want to remove:<br><strong>${propValue}</strong>?</p>`,
-          },
-        })
-        .afterClosed()
-        .subscribe((result) => {
-          if (result) {
-            const responseBlankNode= this.os.listItem.inProgressCommit.additions;
-            const responseSelectedBlankNode= this.os.listItem.selectedBlankNodes;
-            let deleteBNode:any;
-            if(responseBlankNode?.length > 0){
-              deleteBNode = responseBlankNode;
-            } else {
-              deleteBNode = responseSelectedBlankNode;
-            }
-            const deletionObj:any[] = [];
-            const deletedData :JSONLDObject[] =
-                this.os.extractRemovePropertyChainValues(deleteBNode,removeGenId);
-            deletionObj.push(deletedData);
+openRemoveOverlay(propIndex: number, propValue: string, removeGenId: string, removeValues: string[], c: any) {
+  this.dialog
+      .open(ConfirmModalComponent, {
+        data: {
+          content: `<p>Are you sure you want to remove:<br><strong>${propValue}</strong>?</p>`,
+        },
+      })
+      .afterClosed()
+      .pipe(
+          switchMap((result) => {
+            if (result) {
+              return this.os.getEntity(this.os.listItem.selected['@id']).pipe(
+                  map((data) => {
+                    const deletedData = this.os.extractRemovePropertyChainValues(data, removeGenId);
+                    const deletionObj: any[] = [];
+                    deletionObj.push(deletedData);
 
-            const index = this.propertyChainDatas.
-            findIndex(item => item.genId === removeGenId);
-            if (index !== -1){
-              this.propertyChainDatas.splice(index,1);
+                    this.propertyChainDatas.splice(propIndex, 1);
+                    this.os.addToDeletions(this.os.listItem.versionedRdfRecord.recordId, {
+                      '@id': this.os.listItem.selected['@id'],
+                      '@type': [`${OWL}propertyChainAxiom`],
+                      [`${OWL}propertyChainAxiom`]: deletionObj,
+                    });
+
+                    this.os.isPreserve = false;
+                    this.os.saveCurrentChanges().subscribe();
+                  })
+              );
+            } else {
+              return of(null);
             }
-            this.os.addToDeletions(this.os.listItem.versionedRdfRecord.recordId, {
-              '@id': this.os.listItem.selected['@id'],'@type': [`${OWL}propertyChainAxiom`],
-              [`${OWL}propertyChainAxiom`]: deletionObj
-            });
-            this.os.isPreserve = false;
-            this.os.saveCurrentChanges().subscribe();
+          })
+      )
+      .subscribe(
+          () => {
+            this.os.isPreserve = true;
+          },
+          (error) => {
+            console.error("Error during the operation:", error);
             this.os.isPreserve = true;
           }
-        });
-  }
+      );
+}
 
-  editClicked(index: number, property: string, removeGenId:string,values:string[]) {
+
+editClicked(index: number, property: string, removeGenId: string, values: string[]): void {
     this.additional = [];
+
     this.dialog
         .open(PropertyChainOverlayComponent, {
-          data: {
-            editing: true,
-            additionalProperties: values,
-            genId: removeGenId,
-            removeIndex: index
-          },
+            data: {
+                editing: true,
+                additionalProperties: values,
+                genId: removeGenId,
+                removeIndex: index,
+            },
         })
         .afterClosed()
-        .subscribe((result) => {
-          if (result) {
-            const updatedProperty = this.formatAdditionalProperties(result.additionalProperties);
-            if (updatedProperty && updatedProperty.length > 0) {
-              this.cm.getData.subscribe(data =>{
-                const newGenid = this.extractPropertyChainAxioms(data.additions);
-                this.propertyChainDatas[index].genId = newGenid;
-                this.propertyChainDatas[index].values = result.additionalProperties;
-                this.propertyChainDatas[index].formattedValuesStr = updatedProperty;
-                this.pm.addPropertyId(this.os.listItem.selected, `${OWL}propertyChainAxiom`, newGenid);
-              });
+        .pipe(
+            switchMap((result) => {
+                if (result) {
+                    const updatedProperties = result.additionalProperties;
+
+                    // Get entity data using the selected ID from the OS service
+                    return this.os.getEntity(this.os.listItem.selected['@id']).pipe(
+                        map((data) => ({ data, updatedProperties }))
+                    );
+                } else {
+                    return of(null);
+                }
+            })
+        )
+        .subscribe(
+            (response) => {
+                if (response) {
+                    const { data, updatedProperties } = response;
+                    const newGenId = this.extractPropertyChainAxioms(data);
+                    const propertyData = this.propertyChainDatas[index];
+                    propertyData.genId = newGenId;
+                    propertyData.values = updatedProperties;
+                    propertyData.formattedValuesStr = this.formatAdditionalProperties(updatedProperties);
+
+                    this.pm.addPropertyId(this.os.listItem.selected, `${OWL}propertyChainAxiom`, newGenId);
+                }
+            },
+            (error) => {
+                console.error('Error fetching entity data:', error);
             }
-          }
-        });
-  }
+        );
+}
 
 }

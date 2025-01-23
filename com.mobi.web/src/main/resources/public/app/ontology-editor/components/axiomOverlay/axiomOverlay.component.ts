@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2025 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -69,6 +69,7 @@ export class AxiomOverlayComponent implements OnInit {
     expression = '';
     tabIndex = 0;
     localNameMap = {};
+    localNameMapforLabel = {};
     valuesSelectList: {[key: string]: string} = {};
     editorOptions = {
         mode: 'text/omn',
@@ -90,6 +91,7 @@ export class AxiomOverlayComponent implements OnInit {
 
     ngOnInit(): void {
         this.localNameMap = this.createLocalNameMap();
+        this.localNameMapforLabel = this.createLocalNameMapForLabel();
         this.editorOptions.localNames = Object.keys(this.localNameMap);
 
         this.filteredAxioms = this.axiomChoice.valueChanges.pipe(
@@ -139,14 +141,17 @@ export class AxiomOverlayComponent implements OnInit {
     addAxiom(): void {
         const axiom = this.axiom.iri;
         let values;
-        // Collect values depending on current tab
         if (this.tabIndex === 1) {
+            const labelExpression = this.expression;
             const usingDatatypeRange: boolean = (axiom === `${RDFS}range` && this.om.isDataTypeProperty(this.os.listItem.selected));
+            this.expression = this.modifyExpressionWithUrlExtraction(this.localNameMapforLabel,this.expression);
             const result = this.mc.manchesterToJsonld(this.expression, this.localNameMap, usingDatatypeRange);
             if (result.errorMessage) {
+                this.expression = labelExpression;
                 this.errorMessage = result.errorMessage;
                 return;
             } else if (result.jsonld.length === 0) {
+                this.expression = labelExpression;
                 this.errorMessage = 'Expression resulted in no values. Please try again.';
                 return;
             } else {
@@ -184,6 +189,45 @@ export class AxiomOverlayComponent implements OnInit {
                 });
         }
     }
+
+    modifyExpressionWithUrlExtraction(map: { [key: string]: string }, s: string): string {
+        const restrictedKeywords = ["and","or", "(", ")", "SubClassOf", "some"];
+        const words = s.split(/\s+/);
+        let result = '';
+        let currentSegment='';
+
+        for(let i=0; i<words.length;i++){
+            let word = words[i];
+            if(restrictedKeywords.includes(word)){
+                if(currentSegment.length > 0){
+                    if(map[currentSegment]){
+                        result += splitIRI(map[currentSegment]).end + ' ';
+                    } else {
+                        result += currentSegment + ' ';
+                    }
+                    currentSegment = '';
+                }
+                result += word + ' ';
+            } else {
+                if(currentSegment.length > 0){
+                    currentSegment += ' ';
+                }
+                currentSegment += word;
+            }
+        }
+
+        if(currentSegment.length > 0) {
+            if(map[currentSegment]) {
+                result += splitIRI(map[currentSegment]).end;
+            } else {
+                result += currentSegment;
+            }
+        }
+
+        return result.trim();
+    }
+
+
     setValues(prevAxiom: {iri: string, valuesKey: string}): void {
         const valuesKey = get(this.axiom, 'valuesKey');
         if (!valuesKey) {
@@ -217,10 +261,22 @@ export class AxiomOverlayComponent implements OnInit {
         return result;
     }
 
+    getLabelByIRI(iri:string){
+        return this.os.listItem.entityInfo[iri]?.label;
+    }
+
     private createLocalNameMap() {
         const map = {};
         this.os.listItem.iriList.forEach(iri => {
             map[splitIRI(iri).end] = iri;
+        });
+        return map;
+    }
+
+    private createLocalNameMapForLabel() {
+        const map = {};
+        this.os.listItem.iriList.forEach(iri => {
+            map[this.getLabelByIRI(iri)] = iri;
         });
         return map;
     }

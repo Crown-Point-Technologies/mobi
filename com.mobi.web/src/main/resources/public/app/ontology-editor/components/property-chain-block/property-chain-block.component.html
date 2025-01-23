@@ -4,7 +4,7 @@
   $Id:$
   $HeadURL:$
   %%
-  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+  Copyright (C) 2016 - 2025 iNovex Information Systems, Inc.
   %%
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -20,9 +20,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #L%
   -->
-<div class="annotation-block">
+  <div class="annotation-block">
     <div class="section-header">
-        <h5>Property Chain</h5><a class="float-right fa fa-fw fa-plus" (click)="openAddOverlay()"></a>
+        <h5>Property Chain</h5><a *ngIf="os.listItem.selected && !os.isSelectedImported() && os.canModify()" class="float-right fa fa-fw fa-plus" (click)="openAddOverlay()"></a>
     </div>
 
     <ul *ngFor="let chainItem of propertyChainDatas; index as i;" class="property-values mt-3 d-flex">
@@ -31,7 +31,7 @@
         </li>
         <div class="button-container button-section col-2">
             <button  mat-icon-button color="primary"
-                     (click)="openRemoveOverlay(i,chainItem.formattedValuesStr,chainItem.genId)"
+                     (click)="openRemoveOverlay(i,chainItem.formattedValuesStr,chainItem.genId,chainItem.values,chainItem)"
                      title="Delete"><mat-icon>delete</mat-icon></button>
             <button  mat-icon-button color="primary"
                      (click)="editClicked(i, chainItem.formattedValuesStr,chainItem.genId,chainItem.values)"

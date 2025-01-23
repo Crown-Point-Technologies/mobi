@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2025 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -88,6 +88,7 @@ export class AnnotationBlockComponent implements OnChanges {
     updatePropertiesFiltered(): void {
         this.annotations = union(Object.keys(this.os.listItem.annotations.iris), this.pm.defaultAnnotations, this.pm.owlAnnotations);
         this.annotationsFiltered = sortBy(this.annotations.filter(prop => has(this.os.listItem.selected, prop)), iri => this.os.getEntityNameByListItem(iri));
+        this.os._updateLabel(this.annotationsFiltered);
     }
     openAddOverlay(): void {
         this.dialog.open(AnnotationOverlayComponent, {data: { editing: false }}).afterClosed().subscribe(result => {

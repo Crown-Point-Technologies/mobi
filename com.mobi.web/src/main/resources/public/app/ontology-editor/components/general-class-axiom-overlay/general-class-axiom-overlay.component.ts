@@ -4,18 +4,18 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2025 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
@@ -41,6 +41,7 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
   values: string[] = [];
   expression = '';
   localNameMap = {};
+  localNameMapForLabel = {};
   action = '';
   gcaId= '';
   editorOptions = {
@@ -67,6 +68,7 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
 
   ngOnInit(): void {
     this.localNameMap = this.createLocalNameMap();
+    this.localNameMapForLabel = this.createLocalNameMapForLabel();
     this.editorOptions.localNames = Object.keys(this.localNameMap);
   }
 
@@ -82,25 +84,27 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
       }
     }
     let values;
+    let labelExpression;
+    labelExpression = this.expression;
+    this.expression = this.modifyExpressionWithUrlExtraction(this.localNameMapForLabel, this.expression);
     this.gcaIRI = this.extractAfterSubClassOf();
-    if(this.gcaIRI.split(' ').length > 3) {
-      this.errorMessage = "General Class Axiom should have either one or two IRI."
-      return;
-    }
-    const [firstEntity, operator, secondEntity] = this.gcaIRI.split(/(and | or |not |, )/).map(part => part.trim());
     const result = this.mc.manchesterToJsonld(this.expression, this.localNameMap, false);
+    const validExpression = this.validateString(labelExpression, this.localNameMapForLabel);
     if (result.errorMessage) {
+      this.expression = labelExpression;
       this.errorMessage = result.errorMessage;
       return;
     } else if (result.jsonld.length === 0) {
+      this.expression = labelExpression;
       this.errorMessage = 'Expression resulted in no values. Please try again.';
       return;
-    } else if(!this._getFullIRI(firstEntity) || (secondEntity && !this._getFullIRI(secondEntity))) {
-        this.errorMessage = !this._getFullIRI(firstEntity) ?
-            `"${firstEntity}" does not correspond to a known IRI`
-            : `"${secondEntity}" does not correspond to a known IRI`;
-        return;
-    } else {
+    }
+    else if(validExpression[0]){
+      this.expression = labelExpression;
+      this.errorMessage = validExpression[0];
+      return;
+    }
+    else {
       const keyword:boolean = this.hasMoreThanOneIRI(this.gcaIRI);
       if (keyword){
         this.gcaId = getSkolemizedIRI();
@@ -129,6 +133,136 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     const localName = ctx;
     const iri = this.localNameMap[localName];
     return iri;
+  }
+
+  validateString(s: string, iriMap: { [key: string]: string }): [string | null, boolean] {
+    const restrictKeywords = ['and', 'or', 'not', '(', ')'];
+
+    // Find the index of "SubClassOf"
+    const subClassOfIndex = s.indexOf("SubClassOf");
+
+    // If "SubClassOf" is not present, return an error
+    if (subClassOfIndex === -1) {
+      return ["Mismatched input 'SubClassOf' expecting 'SubClassOf'", false];
+    }
+
+    // Get the string after "SubClassOf"
+    const afterSubClassOf = s.substring(subClassOfIndex + "SubClassOf".length).trim();
+
+    // Split the string into words
+    const words = afterSubClassOf.split(/\s+/);
+    let result = '';
+    let validExpression = true;
+
+    // Iterate over words
+    for (let i = 0; i < words.length; i++) {
+      let word = words[i];
+
+      // Skip restriction keywords, do not add them to the result
+      if (restrictKeywords.includes(word)) {
+        // If it's a restriction keyword, check the current result (if any)
+        if (result.trim() && !iriMap[result.trim()]) {
+          validExpression = false;
+          return [`${result.trim()} is not correspond to a known IRI`, true];
+        }
+        result = ''; // Reset result after a restriction keyword
+        continue; // Skip to the next word
+      }
+
+      // Add the word to the result
+      result += word + ' ';
+
+      // Check if the next word is a restriction keyword or it's the last word
+      const isLastWord = (i === words.length - 1);
+      const isRestrictionKeyword = restrictKeywords.includes(words[i + 1]);
+
+      // If it's the last word or a restriction keyword, check the result against the map
+      if (isLastWord || isRestrictionKeyword) {
+        if (!iriMap[result.trim()]) {
+          validExpression = false;
+          return [`${result.trim()} is not correspond to a known IRI`, true];
+        }
+
+        // Reset result for the next part after checking
+        result = '';
+      }
+    }
+
+    // If all parts are found in the map, return null
+    if (validExpression) {
+      return [null, false];
+    }
+
+    return ["Unexpected error", false];
+  }
+
+
+
+  // validateString(s: string, iriMap:{ [key: string]: string }): string | null {
+  //   const restrictKeywords = ['and', 'or', 'not', '(', ')'];
+  //
+  //   const subClassOfIndex = s.indexOf("SubClassOf");
+  //
+  //   if (subClassOfIndex === -1){
+  //     return "Mismatched input 'SubClassOf' expecting 'SubClassOf'";
+  //   }
+  //
+  //   const afterSubClassOf = s.substring(subClassOfIndex + "SubClassOf".length).trim();
+  //
+  //   const words = afterSubClassOf.split(/\s+/);
+  //   let result = '';
+  //   let length = words.length;
+  //   for (let word of words) {
+  //     if (restrictKeywords[word]) {
+  //       break;
+  //     } else {
+  //       result += word + ' ';
+  //     }
+  //
+  //     if (!iriMap[result]) {
+  //       return `${result} is not correspond to a known IRI`;
+  //     }
+  //
+  //   }
+  //
+  //   return null;
+  // }
+
+  modifyExpressionWithUrlExtraction(map: { [key: string]: string }, s: string): string {
+    const restrictedKeywords = ["and","or", "(", ")", "SubClassOf", "some"];
+    const words = s.split(/(\s+|\(|\)|\b)/).filter(word => word.trim().length > 0);
+    let result = '';
+    let currentSegment ='';
+
+    for(let i=0; i<words.length;i++){
+      let word = words[i];
+      if(restrictedKeywords.includes(word)){
+        if(currentSegment.length > 0){
+          if(map[currentSegment]){
+            result += splitIRI(map[currentSegment]).end + ' ';
+          } else {
+            result += currentSegment + ' ';
+          }
+          currentSegment = '';
+        }
+        result += word + ' ';
+      } else {
+        if(currentSegment.length > 0){
+          currentSegment += ' ';
+        }
+        currentSegment += word;
+      }
+    }
+
+    if(currentSegment.length > 0) {
+      if(map[currentSegment]) {
+        result += splitIRI(map[currentSegment]).end;
+      } else {
+        result += currentSegment;
+      }
+    }
+
+    return result.trim();
   }
 
   findRelatedObjects(selectedBlankNode:  JSONLDObject[], genid: string):  JSONLDObject[] {
@@ -187,9 +321,9 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     let entities = [];
 
     const [firstEntity, operator, secondEntity] = str.split(/(and | or |not |, )/).map(part => part.trim());
-    if (!firstEntity || !secondEntity || !operator){
-      this.errorMessage = 'Invalid subClass IRI. It does not correspond to a known IRI.';
-    }
+    // if (!firstEntity || !secondEntity || !operator){
+    //   this.errorMessage = 'Invalid subClass IRI. It does not correspond to a known IRI.';
+    // }
 
     entities = [this._getFullIRI(firstEntity), this._getFullIRI(secondEntity)];
     keyword = Object.keys(expressionKeywords).find(key => expressionKeywords[key].trim() === operator);
@@ -244,10 +378,22 @@ export class GeneralClassAxiomOverlayComponent implements OnInit {
     return jsonObj;
   }
 
+  getLabelByIRI(iri:string){
+    return this.os.listItem.entityInfo[iri]?.label;
+  }
+
   private createLocalNameMap() {
     const map = {};
     this.os.listItem.iriList.forEach(iri => {
       map[splitIRI(iri).end] = iri;
+    });
+    return map;
+  }
+
+  private createLocalNameMapForLabel() {
+    const map = {};
+    this.os.listItem.iriList.forEach(iri => {
+      map[this.getLabelByIRI(iri)] = iri;
     });
     return map;
   }

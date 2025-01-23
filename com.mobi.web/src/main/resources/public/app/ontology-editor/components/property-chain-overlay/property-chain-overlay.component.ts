@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2025 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -31,6 +31,7 @@ import {JSONLDObject} from '../../../shared/models/JSONLDObject.interface';
 import {PropertyManagerService} from '../../../shared/services/propertyManager.service';
 import {cloneDeep, filter, intersection} from 'lodash';
 import {first} from 'rxjs/operators';
+import {CatalogManagerService} from "../../../shared/services/catalogManager.service";
 
 @Component({
   selector: 'app-property-chain-overlay',
@@ -50,7 +51,7 @@ export class PropertyChainOverlayComponent implements OnInit {
 
   constructor(private dialogRef: MatDialogRef<PropertyChainOverlayComponent>,
               @Inject(MAT_DIALOG_DATA) public data: PropertyOverlayDataOptions, private os:OntologyStateService,
-              private toast:ToastService) {
+              private toast:ToastService,  private cm : CatalogManagerService) {
     this.createForm();
   }
 
@@ -127,16 +128,27 @@ export class PropertyChainOverlayComponent implements OnInit {
     this.os.addToAdditions(this.os.listItem.versionedRdfRecord.recordId, json);
     this.os.isPreserve = false;
     this.os.saveCurrentChanges().subscribe();
+    this.os.isPreserve = true;
+    this.os.setEntityUsages(this.os.listItem.selected['@id']);
+    this.os.getEntity(this.os.listItem.selected['@id']).subscribe();
+    this.os.setEntityUsages(this.os.listItem.selected['@id']);
     this.dialogRef.close(newData);
   }
 
   editPropertyChain() {
     const response:JSONLDObject = this.os.listItem.selected;
-    const responseBlankNode = this.os.listItem.inProgressCommit.additions;
     const deletionObj:any[] = [];
+    const responseBlankNode= this.os.listItem.inProgressCommit.additions;
+    const responseSelectedBlankNode= this.os.listItem.selectedBlankNodes;
+    let deleteBNode:any;
+    if(responseSelectedBlankNode?.length > 0){
+      deleteBNode = responseSelectedBlankNode;
+    } else {
+      deleteBNode = responseBlankNode;
+    }
     const removeGenId = this.data.genId;
     const propIndex = this.data.removeIndex;
-    const deletedData :JSONLDObject[] = this.os.extractRemovePropertyChainValues(responseBlankNode,removeGenId);
+    const deletedData :JSONLDObject[] = this.os.extractRemovePropertyChainValues(deleteBNode,removeGenId);
     deletionObj.push(deletedData);
 
     if (response[`${OWL}propertyChainAxiom`]) {
@@ -171,7 +183,10 @@ export class PropertyChainOverlayComponent implements OnInit {
       this.os.isPreserve = false;
       this.os.saveCurrentChanges().subscribe();
       this.os.isPreserve = true;
-      this.toast.createSuccessToast('Property Chain updated successfully');
+    this.os.setEntityUsages(this.os.listItem.selected['@id']);
+      this.os.getEntity(this.os.listItem.selected['@id']).subscribe();
+      this.os.setEntityUsages(this.os.listItem.selected['@id']);
+    this.toast.createSuccessToast('Property Chain updated successfully');
       this.dialogRef.close(this.editData);
   }
 
