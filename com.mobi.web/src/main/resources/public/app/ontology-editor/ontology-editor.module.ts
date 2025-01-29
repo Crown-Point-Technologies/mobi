@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2025 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -101,6 +101,8 @@ import { NegativeObjectPropertyOverlayComponent } from './components/negativeObj
 import { NegativeObjectPropertyBlockComponent } from './components/negative-object-property-block/negative-object-property-block.component';
 import { NegativeDataPropertyBlockComponent } from './components/negative-data-property-block/negative-data-property-block.component';
 import { NegativeDataPropertyOverlayComponent } from './components/negative-data-property-overlay/negative-data-property-overlay.component';
+import {TypesComponent} from "./components/types/types.component";
+import {TypesOverlayComponent} from "./components/types-overlay/types-overlay.component";
 
 /**
  * @namespace ontology-editor
@@ -191,6 +193,8 @@ import { NegativeDataPropertyOverlayComponent } from './components/negative-data
         NegativeObjectPropertyBlockComponent,
         NegativeDataPropertyBlockComponent,
         NegativeDataPropertyOverlayComponent,
+        TypesComponent,
+        TypesOverlayComponent
     ]
 })
 export class OntologyEditorModule {}

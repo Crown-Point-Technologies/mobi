@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2025 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,22 +20,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-import {Component, Input, OnChanges, OnInit} from '@angular/core';
+import {Component, Input, OnChanges} from '@angular/core';
 import {OntologyStateService} from "../../../shared/services/ontologyState.service";
 import {MatDialog} from "@angular/material/dialog";
-import {AxiomOverlayComponent} from "../axiomOverlay/axiomOverlay.component";
 import {TypesOverlayComponent} from "../types-overlay/types-overlay.component";
-import {get, join, map, orderBy} from "lodash";
-import {createJson, isBlankNodeId} from "../../../shared/utility";
-import {PrefixationPipe} from "../../../shared/pipes/prefixation.pipe";
+import {isBlankNodeId} from "../../../shared/utility";
 import {OntologyManagerService} from "../../../shared/services/ontologyManager.service";
-import {ManchesterConverterService} from "../../../shared/services/manchesterConverter.service";
-import {ToastService} from "../../../shared/services/toast.service";
 import {ConfirmModalComponent} from "../../../shared/components/confirmModal/confirmModal.component";
-import {OWL} from "../../../prefixes";
 import {JSONLDObject} from "../../../shared/models/JSONLDObject.interface";
-import {first} from "rxjs/operators";
-import {JSONLDId} from "../../../shared/models/JSONLDId.interface";
 // import module
 
 @Component({
@@ -51,7 +43,7 @@ export class TypesComponent implements OnChanges {
               ) {}
 
   ngOnChanges(): void {
-    if(this.os.listItem.selected['@id']) {
+    if(this.os.listItem?.selected['@id']) {
       this.os.getEntity(this.os.listItem.selected['@id']).subscribe(data => {
         this.typeValues = this.extractTypes(data);
       });

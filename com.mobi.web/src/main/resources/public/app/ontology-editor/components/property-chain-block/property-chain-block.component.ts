@@ -251,7 +251,7 @@ openRemoveOverlay(propIndex: number, propValue: string, removeGenId: string, rem
             if (result) {
               return this.os.getEntity(this.os.listItem.selected['@id']).pipe(
                   map((data) => {
-                    const deletedData = this.os.extractRemovePropertyChainValues(data, removeGenId);
+                      const deletedData = this.os.extractRemovePropertyChainValues(data, removeGenId);
                     const deletionObj: any[] = [];
                     deletionObj.push(deletedData);
 
@@ -273,7 +273,7 @@ openRemoveOverlay(propIndex: number, propValue: string, removeGenId: string, rem
       )
       .subscribe(
           () => {
-            this.os.isPreserve = true;
+              this.os.isPreserve = true;
           },
           (error) => {
             console.error("Error during the operation:", error);

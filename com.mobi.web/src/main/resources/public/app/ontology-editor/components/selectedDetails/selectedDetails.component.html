@@ -4,7 +4,7 @@
   $Id:$
   $HeadURL:$
   %%
-  Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+  Copyright (C) 2016 - 2025 iNovex Information Systems, Inc.
   %%
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -20,7 +20,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #L%
   -->
-<div class="selected-details">
+  <div class="selected-details">
     <div class="selected-heading" *ngIf="os.listItem.selected">
         <span class="entity-name">{{os.getEntityName(os.listItem.selected['@id'])}}</span>
         <static-iri class="editable-iri"
@@ -34,10 +34,5 @@
     <p *ngIf="isFromImportedOntology()" class="type-wrapper is-imported-ontology">
         <span class="type-label">Ontology:</span>
         <span class="imported-ontology text-muted">{{getImportedOntology()}}</span>
-    </p>
-    <p *ngIf="os.listItem.selected && os.listItem.selected['@type']?.length" class="type-wrapper entity-types">
-        <span class="type-label">Type(s):</span>
-        <span class="types text-muted">{{getTypes()}}</span>
-        <a *ngIf="om.isIndividual(os.listItem.selected) && !readOnly && !os.isSelectedImported() && os.canModify()" (click)="showTypesOverlay()"><i class="fa fa-pencil"></i></a>
     </p>
 </div>

@@ -4,7 +4,7 @@
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2016 - 2024 iNovex Information Systems, Inc.
+ * Copyright (C) 2016 - 2025 iNovex Information Systems, Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -331,8 +331,8 @@ export class ManchesterConverterService {
         const onProperty = getPropertyId(entity, `${OWL}onProperty`);
         const onClass = getPropertyId(entity, `${OWL}onClass`);
         if (onProperty) {
-            const propertyRestriction = splitIRI(onProperty).end;
-            let classRestriction = onClass ? splitIRI(onClass).end : undefined;
+            const propertyRestriction = this.getEntityLabel(onProperty);
+            let classRestriction = onClass ? this.getEntityLabel(onClass) : undefined;
             if (isBlankNodeId(onClass)) {
                 const bNodeEntity = find(jsonld, {'@id': onClass});
                 if (bNodeEntity) {
