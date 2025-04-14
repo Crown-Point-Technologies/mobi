@@ -41,7 +41,7 @@ public class DaguActionDefinition implements ActionDefinition {
     private String yaml;
     private List<String> stepNames = new ArrayList<>();
 
-    DaguActionDefinition(String yaml) {
+    public DaguActionDefinition(String yaml) {
         setYaml(yaml);
     }
 
